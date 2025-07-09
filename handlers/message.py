@@ -1,0 +1,63 @@
+from db import channels
+import time
+import uuid
+
+def handle(message):
+    """
+    Handle incoming messages from clients.
+    This function should be called when a new message is received.
+    """
+    try:
+        # Process the message here
+        print(f"[OriginChatsWS] Received message: {message}")
+        print(f"[OriginChatsWS] Message type: {type(message)}")  # Debug: log the type
+
+        if not isinstance(message, dict):
+            return {"cmd": "error", "val": f"Invalid message format: expected a dictionary, got {type(message).__name__}"}
+
+        match message.get("cmd"):
+            case "ping":
+                # Handle ping command
+                return {"cmd": "pong", "val": "pong"}
+            case "chat_message":
+                # Handle chat message
+                channel_name = message.get("channel")
+                content = message.get("content")
+                user = message.get("user")
+
+                if not channel_name or not content or not user:
+                    return {"cmd": "error", "val": "Invalid chat message format"}
+
+                # Save the message to the channel
+                out_msg = {
+                    "user": user,
+                    "content": content,
+                    "timestamp": time.time(),  # Use current timestamp
+                    "type": "message",
+                    "pinned": False,
+                    "id": str(uuid.uuid4())
+                }
+
+                channels.save_channel_message(channel_name, out_msg)
+
+                # Optionally broadcast to all clients
+                return {"cmd": "new_message", "message": out_msg, "global": True}
+            case "get_channels":
+                # Handle request for available channels
+                channels_list = channels.get_all_channels_for_roles(message.get("roles", []))
+                return {"cmd": "get_channels", "channels": channels_list}
+            case "get_channel_messages":
+                # Handle request for channel messages
+                channel_name = message.get("channel")
+                limit = message.get("limit", 100)
+
+                if not channel_name:
+                    return {"cmd": "error", "val": "Invalid channel name"}
+
+                messages = channels.get_channel_messages(channel_name, limit)
+                return {"cmd": "get_channel_messages", "channel": channel_name, "messages": messages}
+            case _:
+                return {"cmd": "error", "val": f"Unknown command: {message.get('cmd')}"}
+    except Exception as e:
+        print(f"[OriginChatsWS] Error handling message: {str(e)}")
+        return {"cmd": "error", "val": f"Exception: {str(e)}"}

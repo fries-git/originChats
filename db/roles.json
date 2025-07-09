@@ -1,0 +1,14 @@
+{
+    "admin": {
+        "description": "Administrator role with full permissions.",
+        "color": "#FF0000"
+    },
+    "moderator": {
+        "description": "Moderator role with elevated permissions.",
+        "color": "#FFFF00"
+    },
+    "user": {
+        "description": "Regular user role with standard permissions.",
+        "color": "#666666"
+    }
+}
