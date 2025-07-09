@@ -1,5 +1,6 @@
 import asyncio, websockets, json, os, requests
 from db import channels
+from db import users
 from handlers import message as message_handler
 
 config = open(os.path.join(os.path.dirname(__file__), "config.json"), "r")
@@ -96,6 +97,12 @@ async def handler(websocket):
 
                     websocket.authenticated = True
                     websocket.username = validator.split(",")[0].lower()  # Extract username from validator
+
+                    if not users.user_exists(websocket.username):
+                        users.add_user(websocket.username)
+                        websocket.user_data = users.get_user(websocket.username)
+                        print(f"[OriginChatsWS] User {websocket.username} created")
+                    
                     await send_to_client(websocket, {"cmd": "auth_success", "val": "Authentication successful"})
                     print(f"[OriginChatsWS] Client {client_ip} authenticated")
                     continue
@@ -104,7 +111,7 @@ async def handler(websocket):
                     await send_to_client(websocket, {"cmd": "auth_error", "val": "Authentication required"})
                     continue
 
-                response = message_handler.handle(data)
+                response = message_handler.handle(websocket, data)
                 if response.get("global", False):
                     # Broadcast to all clients if global flag is set
                     await broadcast_to_all(response)

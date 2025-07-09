@@ -3,8 +3,13 @@
         "post_content": 2000
     },
     "DB": {
-        "users": "db/users.json",
-        "channels": "db/channels"
+        "channels": "db/channels.json",
+        "users": {
+            "file": "db/users.json",
+            "default": {
+                "roles": ["user"]
+            }
+        }
     },
     "websocket": {
         "host": "127.0.0.1",

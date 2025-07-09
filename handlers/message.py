@@ -1,8 +1,9 @@
 from db import channels
 import time
 import uuid
+from db import users
 
-def handle(message):
+def handle(ws, message):
     """
     Handle incoming messages from clients.
     This function should be called when a new message is received.
@@ -44,7 +45,10 @@ def handle(message):
                 return {"cmd": "new_message", "message": out_msg, "global": True}
             case "get_channels":
                 # Handle request for available channels
-                channels_list = channels.get_all_channels_for_roles(message.get("roles", []))
+                user_data = users.get_user(ws.username)  # Ensure user exists
+                if not user_data:
+                    return {"cmd": "error", "val": "User not found"}
+                channels_list = channels.get_all_channels_for_roles(user_data.get("roles", []))
                 return {"cmd": "get_channels", "channels": channels_list}
             case "get_channel_messages":
                 # Handle request for channel messages
@@ -53,6 +57,15 @@ def handle(message):
 
                 if not channel_name:
                     return {"cmd": "error", "val": "Invalid channel name"}
+
+                user_data = users.get_user(ws.username)
+                if not user_data:
+                    return {"cmd": "error", "val": "User not found"}
+
+                # Check if user can see this channel
+                allowed_channels = channels.get_all_channels_for_roles(user_data.get("roles", []))
+                if channel_name not in [c["name"] for c in allowed_channels]:
+                    return {"cmd": "error", "val": "Access denied to this channel"}
 
                 messages = channels.get_channel_messages(channel_name, limit)
                 return {"cmd": "get_channel_messages", "channel": channel_name, "messages": messages}
