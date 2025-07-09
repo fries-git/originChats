@@ -20,7 +20,7 @@ def handle(ws, message):
             case "ping":
                 # Handle ping command
                 return {"cmd": "pong", "val": "pong"}
-            case "chat_message":
+            case "send_message":
                 # Handle chat message
                 channel_name = message.get("channel")
                 content = message.get("content")
@@ -42,7 +42,7 @@ def handle(ws, message):
                 channels.save_channel_message(channel_name, out_msg)
 
                 # Optionally broadcast to all clients
-                return {"cmd": "new_message", "message": out_msg, "global": True}
+                return {"cmd": "new_message", "message": out_msg, "channel": channel_name, "global": True}
             case "get_channels":
                 # Handle request for available channels
                 user_data = users.get_user(ws.username)  # Ensure user exists
