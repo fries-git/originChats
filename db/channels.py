@@ -68,16 +68,10 @@ def get_all_channels_for_roles(roles):
         with open(channels_index, 'r') as f:
             all_channels = json.load(f)
         for channel in all_channels:
-            if channel.get("type") != "text":
-                continue
             permissions = channel.get("permissions", {})
             view_roles = permissions.get("view", [])
             if any(role in view_roles for role in roles):
-                channels.append({
-                    "name": channel.get("name"),
-                    "description": channel.get("description"),
-                    "wallpaper": channel.get("wallpaper")
-                })
+                channels.append(channel)
     except FileNotFoundError:
         return []
     return channels

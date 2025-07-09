@@ -25,6 +25,8 @@
     },
     "server": {
         "name": "In Sophie We Trust",
+        "icon": "https://avatars.rotur.dev/mist",
+        "url": "https://chats.mistium.com",
         "owner": {
             "name": "Mist"
         }

@@ -5,14 +5,17 @@
         "description": "This channel is for important announcements and updates.",
         "wallpaper": "https://raw.githubusercontent.com/Mistium/Origin-OS/main/Wallpapers/originOS%20Dawn.png",
         "permissions": {
-            "view": ["admin", "moderator"],
+            "view": ["user"],
             "send": ["admin", "moderator"],
             "delete": ["admin"]
         }
     },
     {
-        "type": "seperator",
-        "size": 10
+        "type": "separator",
+        "size": 10,
+        "permissions": {
+            "view": ["user"]
+        }
     },
     {
         "type": "text",
@@ -20,8 +23,8 @@
         "description": "This is a general channel for all users to chat and share information.",
         "wallpaper": "https://raw.githubusercontent.com/Mistium/Origin-OS/main/Wallpapers/originOS%20Dawn.png",
         "permissions": {
-            "view": ["admin", "moderator", "user"],
-            "send": ["admin", "moderator", "user"],
+            "view": ["user"],
+            "send": ["user"],
             "delete": ["admin"]
         }
     },
@@ -31,8 +34,8 @@
         "description": "This channel is for discussions related to programming, coding, and software development.",
         "wallpaper": "https://raw.githubusercontent.com/Mistium/Origin-OS/main/Wallpapers/originOS%20Dawn.png",
         "permissions": {
-            "view": ["admin", "moderator", "user"],
-            "send": ["admin", "moderator", "user"],
+            "view": ["user"],
+            "send": ["user"],
             "delete": ["admin"]
         }
     },
@@ -42,8 +45,8 @@
         "description": "This channel is for counting numbers. Please follow the rules and do not spam.",
         "wallpaper": "https://raw.githubusercontent.com/Mistium/Origin-OS/main/Wallpapers/originOS%20Dawn.png",
         "permissions": {
-            "view": ["admin", "moderator", "user"],
-            "send": ["admin", "moderator", "user"],
+            "view": ["user"],
+            "send": ["user"],
             "delete": ["admin"]
         }
     },
@@ -53,8 +56,8 @@
         "description": "This channel is for bot commands and interactions. Use it to interact with bots and automated systems.",
         "wallpaper": "https://raw.githubusercontent.com/Mistium/Origin-OS/main/Wallpapers/originOS%20Dawn.png",
         "permissions": {
-            "view": ["admin", "moderator", "user"],
-            "send": ["admin", "moderator", "user"],
+            "view": ["user"],
+            "send": ["user"],
             "delete": ["admin"]
         }
     }

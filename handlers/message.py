@@ -49,7 +49,7 @@ def handle(ws, message):
                 if not user_data:
                     return {"cmd": "error", "val": "User not found"}
                 channels_list = channels.get_all_channels_for_roles(user_data.get("roles", []))
-                return {"cmd": "get_channels", "channels": channels_list}
+                return {"cmd": "get_channels", "val": channels_list}
             case "get_channel_messages":
                 # Handle request for channel messages
                 channel_name = message.get("channel")
@@ -64,7 +64,8 @@ def handle(ws, message):
 
                 # Check if user can see this channel
                 allowed_channels = channels.get_all_channels_for_roles(user_data.get("roles", []))
-                if channel_name not in [c["name"] for c in allowed_channels]:
+                
+                if channel_name not in [c["name"] for c in allowed_channels if c.get("type") == "text"]:
                     return {"cmd": "error", "val": "Access denied to this channel"}
 
                 messages = channels.get_channel_messages(channel_name, limit)

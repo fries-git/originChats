@@ -75,7 +75,7 @@ async def handler(websocket):
         await send_to_client(websocket, {
             "cmd": "handshake",
             "val": {
-                "server": "originchats",
+                "server": config_data["server"],
                 "version": VERSION,
                 "validator_key": "originChats-" + config_data["rotur"]["validate_key"]
             }
@@ -85,7 +85,7 @@ async def handler(websocket):
         async for message in websocket:
             try:
                 data = json.loads(message)
-                if data.get("cmd") == "auth":
+                if data.get("cmd") == "auth" and not getattr(websocket, "authenticated", False):
                     url = config_data["rotur"]["validate_url"]
                     key = "originChats-" + config_data["rotur"]["validate_key"]
                     validator = data.get("validator")
@@ -118,24 +118,22 @@ async def handler(websocket):
                         "cmd": "user_online",
                         "users": online_users
                     })
+                    user = users.get_user(websocket.username)
+                    if not user:
+                        await send_to_client(websocket, {"cmd": "auth_error", "val": "User not found"})
+                        print(f"[OriginChatsWS] User {websocket.username} not found after authentication")
+                        continue
+                    await broadcast_to_all({
+                        "cmd": "user_connected",
+                        "username": websocket.username,
+                        "roles": user.get("roles", [])
+                    })
                     print(f"[OriginChatsWS] Client {client_ip} authenticated")
                     continue
 
                 if not getattr(websocket, "authenticated", False):
                     await send_to_client(websocket, {"cmd": "auth_error", "val": "Authentication required"})
                     continue
-
-                user = users.get_user(websocket.username)
-                if not user:
-                    await send_to_client(websocket, {"cmd": "auth_error", "val": "User not found"})
-                    print(f"[OriginChatsWS] User {websocket.username} not found after authentication")
-                    continue
-                
-                await broadcast_to_all({
-                    "cmd": "user_connected",
-                    "username": websocket.username,
-                    "roles": user.get("roles", [])
-                })
 
                 response = message_handler.handle(websocket, data)
                 if not response:
@@ -161,10 +159,11 @@ async def handler(websocket):
         if websocket in connected_clients:
             connected_clients.remove(websocket)
             print(f"[OriginChatsWS] Client {client_ip} removed. {len(connected_clients)} clients remaining")
-            await broadcast_to_all({
-                "cmd": "user_disconnected",
-                "username": websocket.username
-            })
+            if getattr(websocket, "authenticated", False):
+                await broadcast_to_all({
+                    "cmd": "user_disconnected",
+                    "username": websocket.username
+                })
 
 # Start the WebSocket server
 async def main():

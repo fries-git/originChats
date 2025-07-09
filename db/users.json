@@ -4,5 +4,10 @@
             "admin",
             "user"
         ]
+    },
+    "allucat1000": {
+        "roles": [
+            "user"
+        ]
     }
 }
