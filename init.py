@@ -100,10 +100,24 @@ async def handler(websocket):
 
                     if not users.user_exists(websocket.username):
                         users.add_user(websocket.username)
-                        websocket.user_data = users.get_user(websocket.username)
                         print(f"[OriginChatsWS] User {websocket.username} created")
-                    
+
                     await send_to_client(websocket, {"cmd": "auth_success", "val": "Authentication successful"})
+                    # Gather authenticated users' info efficiently
+                    online_users = []
+                    for ws in connected_clients:
+                        if getattr(ws, "authenticated", False):
+                            user_data = users.get_user(ws.username)
+                            if not user_data:
+                                continue
+                            online_users.append({
+                                "username": ws.username,
+                                "roles": user_data.get("roles")
+                            })
+                    await send_to_client(websocket, {
+                        "cmd": "user_online",
+                        "users": online_users
+                    })
                     print(f"[OriginChatsWS] Client {client_ip} authenticated")
                     continue
 
@@ -111,7 +125,22 @@ async def handler(websocket):
                     await send_to_client(websocket, {"cmd": "auth_error", "val": "Authentication required"})
                     continue
 
+                user = users.get_user(websocket.username)
+                if not user:
+                    await send_to_client(websocket, {"cmd": "auth_error", "val": "User not found"})
+                    print(f"[OriginChatsWS] User {websocket.username} not found after authentication")
+                    continue
+                
+                await broadcast_to_all({
+                    "cmd": "user_connected",
+                    "username": websocket.username,
+                    "roles": user.get("roles", [])
+                })
+
                 response = message_handler.handle(websocket, data)
+                if not response:
+                    print(f"[OriginChatsWS] No response for message: {data}")
+                    continue
                 if response.get("global", False):
                     # Broadcast to all clients if global flag is set
                     await broadcast_to_all(response)
@@ -122,7 +151,6 @@ async def handler(websocket):
                 print(f"[OriginChatsWS] Received invalid JSON: {message[:50]}...")
             except Exception as e:
                 print(f"[OriginChatsWS] Error processing message: {str(e)}")
-                
     except websockets.exceptions.ConnectionClosed:
         print(f"[OriginChatsWS] Connection closed by {client_ip}")
     except Exception as e:
@@ -133,6 +161,10 @@ async def handler(websocket):
         if websocket in connected_clients:
             connected_clients.remove(websocket)
             print(f"[OriginChatsWS] Client {client_ip} removed. {len(connected_clients)} clients remaining")
+            await broadcast_to_all({
+                "cmd": "user_disconnected",
+                "username": websocket.username
+            })
 
 # Start the WebSocket server
 async def main():
