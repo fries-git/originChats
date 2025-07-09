@@ -20,7 +20,7 @@ def handle(ws, message):
             case "ping":
                 # Handle ping command
                 return {"cmd": "pong", "val": "pong"}
-            case "send_message":
+            case "message_new":
                 # Handle chat message
                 channel_name = message.get("channel")
                 content = message.get("content")
@@ -42,15 +42,15 @@ def handle(ws, message):
                 channels.save_channel_message(channel_name, out_msg)
 
                 # Optionally broadcast to all clients
-                return {"cmd": "new_message", "message": out_msg, "channel": channel_name, "global": True}
-            case "get_channels":
+                return {"cmd": "message_new", "message": out_msg, "channel": channel_name, "global": True}
+            case "channels_get":
                 # Handle request for available channels
                 user_data = users.get_user(ws.username)  # Ensure user exists
                 if not user_data:
                     return {"cmd": "error", "val": "User not found"}
                 channels_list = channels.get_all_channels_for_roles(user_data.get("roles", []))
-                return {"cmd": "get_channels", "val": channels_list}
-            case "get_channel_messages":
+                return {"cmd": "channels_get", "val": channels_list}
+            case "messages_get":
                 # Handle request for channel messages
                 channel_name = message.get("channel")
                 limit = message.get("limit", 100)
@@ -69,7 +69,7 @@ def handle(ws, message):
                     return {"cmd": "error", "val": "Access denied to this channel"}
 
                 messages = channels.get_channel_messages(channel_name, limit)
-                return {"cmd": "get_channel_messages", "channel": channel_name, "messages": messages}
+                return {"cmd": "messages_get", "channel": channel_name, "messages": messages}
             case _:
                 return {"cmd": "error", "val": f"Unknown command: {message.get('cmd')}"}
     except Exception as e:
