@@ -131,6 +131,12 @@ async def handler(websocket):
                         "cmd": "users_online",
                         "users": online_users
                     })
+                    # send down all the users and their colours
+                    await send_to_client(websocket, {
+                        "cmd": "users_list",
+                        "users": users.get_users()
+                    })
+
                     user = users.get_user(websocket.username)
                     if not user:
                         await send_to_client(websocket, {"cmd": "auth_error", "val": "User not found"})

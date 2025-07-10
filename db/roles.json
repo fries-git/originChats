@@ -9,6 +9,6 @@
     },
     "user": {
         "description": "Regular user role with standard permissions.",
-        "color": "#666666"
+        "color": null
     }
 }
