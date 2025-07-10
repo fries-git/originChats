@@ -1,12 +1,16 @@
-from db import channels
+from db import channels, users, roles
 import time
 import uuid
-from db import users
 
-def handle(ws, message):
+def handle(ws, message, server_data=None):
     """
     Handle incoming messages from clients.
     This function should be called when a new message is received.
+    
+    Args:
+        ws: WebSocket connection
+        message: Message data from client
+        server_data: Dict containing server state (connected_clients, etc.)
     """
     if True:
         # Process the message here
@@ -129,6 +133,47 @@ def handle(ws, message):
 
                 messages = channels.get_channel_messages(channel_name, limit)
                 return {"cmd": "messages_get", "channel": channel_name, "messages": messages}
+            case "users_list":
+                # Handle request for all users list
+                username = getattr(ws, 'username', None)
+                if not username:
+                    return {"cmd": "error", "val": "User not authenticated"}
+                
+                users_list = users.get_users()
+                return {"cmd": "users_list", "users": users_list}
+            case "users_online":
+                # Handle request for online users list  
+                username = getattr(ws, 'username', None)
+                if not username:
+                    return {"cmd": "error", "val": "User not authenticated"}
+                
+                if not server_data or "connected_clients" not in server_data:
+                    return {"cmd": "error", "val": "Server data not available"}
+                
+                # Gather authenticated users' info efficiently
+                online_users = []
+                for client_ws in server_data["connected_clients"]:
+                    if getattr(client_ws, "authenticated", False):
+                        user_data = users.get_user(client_ws.username)
+                        if not user_data:
+                            continue
+                        
+                        # Get the color of the first role
+                        user_roles = user_data.get("roles", [])
+                        color = None
+                        if user_roles:
+                            first_role_name = user_roles[0]
+                            first_role_data = roles.get_role(first_role_name)
+                            if first_role_data:
+                                color = first_role_data.get("color")
+                        
+                        online_users.append({
+                            "username": client_ws.username,
+                            "roles": user_data.get("roles"),
+                            "color": color
+                        })
+                
+                return {"cmd": "users_online", "users": online_users}
             case _:
                 return {"cmd": "error", "val": f"Unknown command: {message.get('cmd')}"}
     # except Exception as e:
