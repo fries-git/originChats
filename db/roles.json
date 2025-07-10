@@ -7,6 +7,10 @@
         "description": "Moderator role with elevated permissions.",
         "color": "#FFFF00"
     },
+    "allu": {
+        "description": "Special role for Allucat1000",
+        "color": "#00FFFF"
+    },
     "user": {
         "description": "Regular user role with standard permissions.",
         "color": null

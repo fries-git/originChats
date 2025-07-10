@@ -7,6 +7,7 @@
     },
     "allucat1000": {
         "roles": [
+            "allu",
             "user"
         ]
     },
@@ -21,6 +22,16 @@
         ]
     },
     "nameless": {
+        "roles": [
+            "user"
+        ]
+    },
+    "probioticz": {
+        "roles": [
+            "user"
+        ]
+    },
+    "stormy": {
         "roles": [
             "user"
         ]
