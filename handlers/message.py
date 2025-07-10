@@ -83,7 +83,7 @@ def handle(ws, message, server_data=None):
                     return {"cmd": "error", "val": "Message not found or cannot be deleted"}
                 
                 user_roles = users.get_user_roles(getattr(ws, 'username', None))
-                if not roles:
+                if not user_roles:
                     return {"cmd": "error", "val": "User roles not found"}
                 
                 username = getattr(ws, 'username', None)
@@ -92,7 +92,7 @@ def handle(ws, message, server_data=None):
                 
                 if not message.get("user") == username:
                     # If the user is not the original sender, check if they have permission to delete
-                    if not channels.does_user_have_permission(channel_name, roles, "delete_others"):
+                    if not channels.does_user_have_permission(channel_name, user_roles, "delete_others"):
                         return {"cmd": "error", "val": "You do not have permission to delete this message"}
 
                 if not channels.delete_channel_message(channel_name, message_id):
