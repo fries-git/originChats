@@ -37,6 +37,9 @@ def save_channel_message(channel_name, message):
     Returns:
         bool: True if the message was saved successfully, False otherwise.
     """
+    # Ensure the channels directory exists
+    os.makedirs(channels_db_dir, exist_ok=True)
+    
     # Load existing channel data or create a new one
     try:
         with open(f"{channels_db_dir}/{channel_name}.json", 'r') as f:
@@ -75,3 +78,111 @@ def get_all_channels_for_roles(roles):
     except FileNotFoundError:
         return []
     return channels
+
+def edit_channel_message(channel_name, message_id, new_content):
+    """
+    Edit a message in a specific channel.
+
+    Args:
+        channel_name (str): The name of the channel.
+        message_id (str): The ID of the message to edit.
+        new_content (str): The new content for the message.
+
+    Returns:
+        bool: True if the message was edited successfully, False otherwise.
+    """
+    try:
+        with open(f"{channels_db_dir}/{channel_name}.json", 'r') as f:
+            channel_data = json.load(f)
+
+        for msg in channel_data:
+            if msg.get("id") == message_id:
+                msg["content"] = new_content
+                break
+        else:
+            return False  # Message not found
+
+        # Ensure the channels directory exists
+        os.makedirs(channels_db_dir, exist_ok=True)
+        
+        with open(f"{channels_db_dir}/{channel_name}.json", 'w') as f:
+            json.dump(channel_data, f, indent=4)
+
+        return True
+    except FileNotFoundError:
+        return False
+
+def get_channel_message(channel_name, message_id):
+    """
+    Retrieve a specific message from a channel by its ID.
+
+    Args:
+        channel_name (str): The name of the channel.
+        message_id (str): The ID of the message to retrieve.
+
+    Returns:
+        dict: The message if found, None otherwise.
+    """
+    try:
+        with open(f"{channels_db_dir}/{channel_name}.json", 'r') as f:
+            channel_data = json.load(f)
+
+        for msg in channel_data:
+            if msg.get("id") == message_id:
+                return msg
+        return None  # Message not found
+    except FileNotFoundError:
+        return None  # Channel not found
+    
+def does_user_have_permission(channel_name, user_roles, permission_type):
+    """
+    Check if a user with specific roles has permission to perform an action on a channel.
+
+    Args:
+        channel_name (str): The name of the channel.
+        user_roles (list): A list of roles assigned to the user.
+        permission_type (str): The type of permission to check (e.g., "view", "edit").
+
+    Returns:
+        bool: True if the user has the required permission, False otherwise.
+    """
+    try:
+        with open(channels_index, 'r') as f:
+            channels_data = json.load(f)
+
+        for channel in channels_data:
+            if channel.get("name") == channel_name:
+                permissions = channel.get("permissions", {})
+                allowed_roles = permissions.get(permission_type, [])
+                return any(role in allowed_roles for role in user_roles)
+    except FileNotFoundError:
+        return False  # Channel index not found
+
+    return False  # Channel not found
+    
+def delete_channel_message(channel_name, message_id):
+    """
+    Delete a message from a specific channel.
+
+    Args:
+        channel_name (str): The name of the channel.
+        message_id (str): The ID of the message to delete.
+
+    Returns:
+        bool: True if the message was deleted successfully, False otherwise.
+    """
+    try:
+        with open(f"{channels_db_dir}/{channel_name}.json", 'r') as f:
+            channel_data = json.load(f)
+
+        new_data = [msg for msg in channel_data if msg.get("id") != message_id]
+
+        # Ensure the channels directory exists
+        os.makedirs(channels_db_dir, exist_ok=True)
+        
+        with open(f"{channels_db_dir}/{channel_name}.json", 'w') as f:
+            json.dump(new_data, f, indent=4)
+
+        return True
+    except FileNotFoundError:
+        return False

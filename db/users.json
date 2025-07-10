@@ -1,7 +1,6 @@
 {
     "mist": {
         "roles": [
-            "admin",
             "user"
         ]
     },

@@ -2,6 +2,7 @@ import asyncio, websockets, json, os, requests
 from db import channels
 from db import users
 from handlers import message as message_handler
+import watchers
 
 config = open(os.path.join(os.path.dirname(__file__), "config.json"), "r")
 config_data = json.load(config)
@@ -108,6 +109,8 @@ async def handler(websocket):
                     for ws in connected_clients:
                         if getattr(ws, "authenticated", False):
                             user_data = users.get_user(ws.username)
+                            if ws.username == websocket.username:
+                                continue
                             if not user_data:
                                 continue
                             online_users.append({
@@ -115,7 +118,7 @@ async def handler(websocket):
                                 "roles": user_data.get("roles")
                             })
                     await send_to_client(websocket, {
-                        "cmd": "user_online",
+                        "cmd": "users_online",
                         "users": online_users
                     })
                     user = users.get_user(websocket.username)
@@ -123,8 +126,14 @@ async def handler(websocket):
                         await send_to_client(websocket, {"cmd": "auth_error", "val": "User not found"})
                         print(f"[OriginChatsWS] User {websocket.username} not found after authentication")
                         continue
+
+                    user["username"] = websocket.username
+                    await send_to_client(websocket, {
+                        "cmd": "ready",
+                        "user": user
+                    })
                     await broadcast_to_all({
-                        "cmd": "user_connected",
+                        "cmd": "user_connect",
                         "user": {
                             "username": websocket.username,
                             "roles": user.get("roles")
@@ -176,15 +185,24 @@ async def main():
     # Store the main event loop for use in other threads
     main_event_loop = asyncio.get_event_loop()
 
+    # Setup file watchers for users.json and channels.json
+    file_observer = watchers.setup_file_watchers(broadcast_to_all, main_event_loop)
+
     # Create the WebSocket server
     port = 5613
     print(f"[OriginChatsWS] Starting WebSocket server on port {port}")
     
-    async with websockets.serve(handler, "127.0.0.1", port, ping_interval=None):
-        print(f"[OriginChatsWS] WebSocket server running at ws://127.0.0.1:{port}")
-        
-        # Keep the server running
-        await asyncio.Future()
+    try:
+        async with websockets.serve(handler, "127.0.0.1", port, ping_interval=None):
+            print(f"[OriginChatsWS] WebSocket server running at ws://127.0.0.1:{port}")
+            
+            # Keep the server running
+            await asyncio.Future()
+    finally:
+        # Stop file watcher when server stops
+        file_observer.stop()
+        file_observer.join()
+        print("[OriginChatsWS] File watcher stopped")
 
 if __name__ == "__main__":
     print(f"[OriginChatsWS] OriginChats WebSocket Server v{VERSION} starting...")

@@ -46,3 +46,12 @@ def add_user(user_id):
         json.dump(users, f, indent=4)
 
     return True
+
+def get_user_roles(user_id):
+    """
+    Get the roles of a user.
+    """
+    user = get_user(user_id)
+    if user:
+        return user.get("roles", [])
+    return []
