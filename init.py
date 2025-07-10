@@ -144,6 +144,7 @@ async def handler(websocket):
                 if response.get("global", False):
                     # Broadcast to all clients if global flag is set
                     await broadcast_to_all(response)
+                    continue
                 if response:
                     await send_to_client(websocket, response)
 

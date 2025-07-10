@@ -1,0 +1,26 @@
+[
+    {
+        "user": "allucat1000",
+        "content": "can I send a message here? i assume not?",
+        "timestamp": 1752143638.9301,
+        "type": "message",
+        "pinned": false,
+        "id": "368495de-dba8-43bb-9e53-12d7d961d124"
+    },
+    {
+        "user": "allucat1000",
+        "content": "oh :skull:",
+        "timestamp": 1752143649.522036,
+        "type": "message",
+        "pinned": false,
+        "id": "1e0fe671-4d5c-45ab-bc29-392533372071"
+    },
+    {
+        "user": "allucat1000",
+        "content": "Welcome to the \"In Sophie We Trust\" Origin Chats server!",
+        "timestamp": 1752143721.8057961,
+        "type": "message",
+        "pinned": false,
+        "id": "685d9c25-000e-4dfc-9576-4dccde8723a3"
+    }
+]

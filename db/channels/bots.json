@@ -1,0 +1,18 @@
+[
+    {
+        "user": "allucat1000",
+        "content": "beep boop baap",
+        "timestamp": 1752132380.797835,
+        "type": "message",
+        "pinned": false,
+        "id": "0d65eb9b-70b4-4495-ab39-9ac49e235126"
+    },
+    {
+        "user": "allucat1000",
+        "content": "real",
+        "timestamp": 1752136241.555197,
+        "type": "message",
+        "pinned": false,
+        "id": "e24bc61f-8708-472d-9d41-16214581088e"
+    }
+]

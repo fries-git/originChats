@@ -41,8 +41,8 @@ def handle(ws, message):
 
                 channels.save_channel_message(channel_name, out_msg)
 
-                # Only acknowledge to sender; broadcasting is handled elsewhere
-                return {"cmd": "ok", "val": "message received"}
+                # Optionally broadcast to all clients
+                return {"cmd": "message_new", "message": out_msg, "channel": channel_name, "global": True}
             case "channels_get":
                 # Handle request for available channels
                 user_data = users.get_user(ws.username)  # Ensure user exists

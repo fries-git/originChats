@@ -9,5 +9,10 @@
         "roles": [
             "user"
         ]
+    },
+    "throwaway": {
+        "roles": [
+            "user"
+        ]
     }
 }
