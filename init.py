@@ -105,7 +105,21 @@ async def handler(websocket):
                         print(f"[OriginChatsWS] User {websocket.username} created")
 
                     await send_to_client(websocket, {"cmd": "auth_success", "val": "Authentication successful"})
-                    # Gather authenticated users' info efficiently
+                    
+                    # Get user data and send ready packet first
+                    user = users.get_user(websocket.username)
+                    if not user:
+                        await send_to_client(websocket, {"cmd": "auth_error", "val": "User not found"})
+                        print(f"[OriginChatsWS] User {websocket.username} not found after authentication")
+                        continue
+
+                    user["username"] = websocket.username
+                    await send_to_client(websocket, {
+                        "cmd": "ready",
+                        "user": user
+                    })
+                    
+                    # Then gather authenticated users' info efficiently
                     online_users = []
                     for ws in connected_clients:
                         if getattr(ws, "authenticated", False):
@@ -137,18 +151,6 @@ async def handler(websocket):
                     await send_to_client(websocket, {
                         "cmd": "users_list",
                         "users": users.get_users()
-                    })
-
-                    user = users.get_user(websocket.username)
-                    if not user:
-                        await send_to_client(websocket, {"cmd": "auth_error", "val": "User not found"})
-                        print(f"[OriginChatsWS] User {websocket.username} not found after authentication")
-                        continue
-
-                    user["username"] = websocket.username
-                    await send_to_client(websocket, {
-                        "cmd": "ready",
-                        "user": user
                     })
                     # Get the color of the first role
                     user_roles = user.get("roles", [])

@@ -3,7 +3,7 @@ import json
 import os
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
-from db import users, channels
+from db import users, channels, roles
 
 class FileWatcher(FileSystemEventHandler):
     """File system event handler for watching JSON files"""
@@ -41,7 +41,7 @@ class FileWatcher(FileSystemEventHandler):
         filename = os.path.basename(event.src_path)
             
         # Handle users.json changes
-        if filename == 'users.json':
+        if filename == 'users.json' or filename == 'roles.json':
             print(f"[OriginChatsWS] Users file changed: {event.src_path}")
             asyncio.run_coroutine_threadsafe(
                 self._handle_users_change(), 
@@ -56,48 +56,12 @@ class FileWatcher(FileSystemEventHandler):
                 self.main_loop
             )
     
-    def _find_user_changes(self, old_users, new_users):
-        """Find which users were added, modified, or deleted"""
-        changes = {
-            "added": {},
-            "modified": {},
-            "deleted": []
-        }
-        
-        # Find added and modified users
-        for user_id, user_data in new_users.items():
-            if user_id not in old_users:
-                changes["added"][user_id] = user_data
-            elif old_users[user_id] != user_data:
-                changes["modified"][user_id] = user_data
-        
-        # Find deleted users
-        for user_id in old_users:
-            if user_id not in new_users:
-                changes["deleted"].append(user_id)
-        
-        return changes
-    
     async def _handle_users_change(self):
-        """Handle users.json file changes"""
         try:
-            # Load new users data
-            with open(users.users_index, 'r') as f:
-                new_users = json.load(f)
-            
-            # Find what changed
-            changes = self._find_user_changes(self._users_cache, new_users)
-            
-            # Only broadcast if there are actual changes
-            if any(changes.values()):
-                await self.broadcast_func({
-                    "cmd": "user_edit",
-                    "changes": changes
-                })
-                print(f"[OriginChatsWS] Broadcasted user_edit: {len(changes['added'])} added, {len(changes['modified'])} modified, {len(changes['deleted'])} deleted")
-            
-            # Update cache
-            self._users_cache = new_users.copy()
+            await self.broadcast_func({
+                "cmd": "users_list",
+                "users": users.get_users()
+            })
             
         except Exception as e:
             print(f"[OriginChatsWS] Error handling users.json change: {e}")

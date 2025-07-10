@@ -28,6 +28,10 @@ def handle(ws, message):
                 if not channel_name or not content or not user:
                     return {"cmd": "error", "val": "Invalid chat message format"}
 
+                content = content.strip()
+                if not content:
+                    return {"cmd": "error", "val": "Message content cannot be empty"}
+
                 roles = users.get_user_roles(user)
                 if not roles:
                     return {"cmd": "error", "val": "User roles not found"}
