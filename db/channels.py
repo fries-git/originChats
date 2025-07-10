@@ -50,9 +50,9 @@ def save_channel_message(channel_name, message):
     # Append the new message
     channel_data.append(message)
 
-    # Save the updated channel data
+    # Save the updated channel data with compact formatting
     with open(f"{channels_db_dir}/{channel_name}.json", 'w') as f:
-        json.dump(channel_data, f, indent=4)
+        json.dump(channel_data, f, separators=(',', ':'), ensure_ascii=False)
 
     return True
 
@@ -106,7 +106,7 @@ def edit_channel_message(channel_name, message_id, new_content):
         os.makedirs(channels_db_dir, exist_ok=True)
         
         with open(f"{channels_db_dir}/{channel_name}.json", 'w') as f:
-            json.dump(channel_data, f, indent=4)
+            json.dump(channel_data, f, separators=(',', ':'), ensure_ascii=False)
 
         return True
     except FileNotFoundError:
@@ -181,7 +181,7 @@ def delete_channel_message(channel_name, message_id):
         os.makedirs(channels_db_dir, exist_ok=True)
         
         with open(f"{channels_db_dir}/{channel_name}.json", 'w') as f:
-            json.dump(new_data, f, indent=4)
+            json.dump(new_data, f, separators=(',', ':'), ensure_ascii=False)
 
         return True
     except FileNotFoundError:

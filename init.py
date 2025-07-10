@@ -1,6 +1,5 @@
 import asyncio, websockets, json, os, requests
-from db import channels
-from db import users
+from db import channels, users, roles
 from handlers import message as message_handler
 import watchers
 
@@ -113,9 +112,20 @@ async def handler(websocket):
                                 continue
                             if not user_data:
                                 continue
+                            
+                            # Get the color of the first role
+                            user_roles = user_data.get("roles", [])
+                            color = None
+                            if user_roles:
+                                first_role_name = user_roles[0]
+                                first_role_data = roles.get_role(first_role_name)
+                                if first_role_data:
+                                    color = first_role_data.get("color")
+                            
                             online_users.append({
                                 "username": ws.username,
-                                "roles": user_data.get("roles")
+                                "roles": user_data.get("roles"),
+                                "color": color
                             })
                     await send_to_client(websocket, {
                         "cmd": "users_online",
@@ -132,11 +142,21 @@ async def handler(websocket):
                         "cmd": "ready",
                         "user": user
                     })
+                    # Get the color of the first role
+                    user_roles = user.get("roles", [])
+                    color = None
+                    if user_roles:
+                        first_role_name = user_roles[0]
+                        first_role_data = roles.get_role(first_role_name)
+                        if first_role_data:
+                            color = first_role_data.get("color")
+                    
                     await broadcast_to_all({
                         "cmd": "user_connect",
                         "user": {
                             "username": websocket.username,
-                            "roles": user.get("roles")
+                            "roles": user.get("roles"),
+                            "color": color
                         }
                     })
                     print(f"[OriginChatsWS] Client {client_ip} authenticated")

@@ -78,64 +78,6 @@ class FileWatcher(FileSystemEventHandler):
         
         return changes
     
-    def _generate_channel_id(self, channel, index):
-        """Generate a unique ID for a channel based on its content"""
-        if channel.get("name"):
-            return channel["name"]
-        elif channel.get("type") == "separator":
-            # For separators, use type + index since they don't have names
-            return f"separator_{index}"
-        else:
-            # Fallback to index-based ID
-            return f"channel_{index}"
-    
-    def _find_channel_changes(self, old_channels, new_channels):
-        """Find which channels were added, modified, or deleted"""
-        changes = {
-            "added": [],
-            "modified": [],
-            "deleted": []
-        }
-        
-        # Create lookup maps with proper IDs for all channel types
-        old_map = {}
-        new_map = {}
-        
-        for i, ch in enumerate(old_channels):
-            channel_id = self._generate_channel_id(ch, i)
-            old_map[channel_id] = ch
-        
-        for i, ch in enumerate(new_channels):
-            channel_id = self._generate_channel_id(ch, i)
-            new_map[channel_id] = ch
-        
-        # Find added and modified channels
-        for i, (channel_id, channel_data) in enumerate(new_map.items()):
-            if channel_id not in old_map:
-                # For added channels, include the index where they should be inserted
-                new_index = next(idx for idx, ch in enumerate(new_channels) 
-                               if self._generate_channel_id(ch, idx) == channel_id)
-                changes["added"].append({
-                    "id": channel_id,
-                    "data": channel_data,
-                    "index": new_index
-                })
-            elif old_map[channel_id] != channel_data:
-                changes["modified"].append({
-                    "id": channel_id,
-                    "data": channel_data
-                })
-        
-        # Find deleted channels
-        for channel_id, channel_data in old_map.items():
-            if channel_id not in new_map:
-                changes["deleted"].append({
-                    "id": channel_id,
-                    "data": channel_data
-                })
-        
-        return changes
-    
     async def _handle_users_change(self):
         """Handle users.json file changes"""
         try:
@@ -167,19 +109,10 @@ class FileWatcher(FileSystemEventHandler):
             with open(channels.channels_index, 'r') as f:
                 new_channels = json.load(f)
             
-            # Find what changed
-            changes = self._find_channel_changes(self._channels_cache, new_channels)
-            
-            # Only broadcast if there are actual changes
-            if any(changes.values()):
-                await self.broadcast_func({
-                    "cmd": "channel_edit",
-                    "changes": changes
-                })
-                print(f"[OriginChatsWS] Broadcasted channel_edit: {len(changes['added'])} added, {len(changes['modified'])} modified, {len(changes['deleted'])} deleted")
-            
-            # Update cache
-            self._channels_cache = new_channels.copy()
+            await self.broadcast_func({
+                "cmd": "channels_get",
+                "val": new_channels
+            })
             
         except Exception as e:
             print(f"[OriginChatsWS] Error handling channels.json change: {e}")
