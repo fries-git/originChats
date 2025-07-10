@@ -63,6 +63,10 @@ def create_default_files():
     roles_file = "db/roles.json"
     if not os.path.exists(roles_file):
         default_roles = {
+            "owner": {
+                "description": "Server owner with ultimate permissions.",
+                "color": "#9400D3"
+            },
             "admin": {
                 "description": "Administrator role with full permissions.",
                 "color": "#FF0000"
