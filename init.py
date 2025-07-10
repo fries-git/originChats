@@ -43,14 +43,16 @@ async def heartbeat(ws):
 async def broadcast_to_all(message):
     """Broadcast a message to all connected clients"""
     disconnected = set()
-    for ws in connected_clients:
+    # Create a copy of the set to avoid "Set changed size during iteration" error
+    clients_copy = connected_clients.copy()
+    for ws in clients_copy:
         success = await send_to_client(ws, message)
         if not success:
             disconnected.add(ws)
     
     # Clean up disconnected clients
     for ws in disconnected:
-        connected_clients.remove(ws)
+        connected_clients.discard(ws)  # Use discard instead of remove to avoid KeyError
     
     if disconnected:
         print(f"[OriginChatsWS] Removed {len(disconnected)} disconnected clients")
