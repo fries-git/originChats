@@ -89,7 +89,7 @@ async def handler(websocket):
                     url = config_data["rotur"]["validate_url"]
                     key = "originChats-" + config_data["rotur"]["validate_key"]
                     validator = data.get("validator")
-                    response = requests.get(url, params={"key": key, "v": validator})
+                    response = requests.get(url, params={"key": key, "v": validator}, timeout=5)
                     if response.status_code != 200 or response.json().get("valid") != True:
                         await send_to_client(websocket, {"cmd": "auth_error", "val": "Invalid authentication"})
                         print(f"[OriginChatsWS] Client {client_ip} failed authentication")
@@ -125,8 +125,10 @@ async def handler(websocket):
                         continue
                     await broadcast_to_all({
                         "cmd": "user_connected",
-                        "username": websocket.username,
-                        "roles": user.get("roles", [])
+                        "user": {
+                            "username": websocket.username,
+                            "roles": user.get("roles")
+                        }
                     })
                     print(f"[OriginChatsWS] Client {client_ip} authenticated")
                     continue
@@ -161,7 +163,7 @@ async def handler(websocket):
             print(f"[OriginChatsWS] Client {client_ip} removed. {len(connected_clients)} clients remaining")
             if getattr(websocket, "authenticated", False):
                 await broadcast_to_all({
-                    "cmd": "user_disconnected",
+                    "cmd": "user_disconnect",
                     "username": websocket.username
                 })
 

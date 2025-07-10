@@ -24,7 +24,7 @@ def handle(ws, message):
                 # Handle chat message
                 channel_name = message.get("channel")
                 content = message.get("content")
-                user = message.get("user")
+                user = ws.username
 
                 if not channel_name or not content or not user:
                     return {"cmd": "error", "val": "Invalid chat message format"}

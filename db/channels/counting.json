@@ -1,0 +1,18 @@
+[
+    {
+        "user": "allucat1000",
+        "content": "I hope that the correct value to say is \"5\"",
+        "timestamp": 1752099689.011302,
+        "type": "message",
+        "pinned": false,
+        "id": "4b1193b1-7a84-411d-8756-b4c5ebd84741"
+    },
+    {
+        "user": "allucat1000",
+        "content": "5",
+        "timestamp": 1752099692.057905,
+        "type": "message",
+        "pinned": false,
+        "id": "35186988-2734-49c3-b5fb-f44916dba2de"
+    }
+]
