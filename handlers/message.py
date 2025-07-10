@@ -36,12 +36,12 @@ def handle(ws, message, server_data=None):
                 if not content:
                     return {"cmd": "error", "val": "Message content cannot be empty"}
 
-                roles = users.get_user_roles(user)
-                if not roles:
+                user_roles = users.get_user_roles(user)
+                if not user_roles:
                     return {"cmd": "error", "val": "User roles not found"}
 
                 # Check if the user has permission to send messages in this channel
-                if not channels.does_user_have_permission(channel_name, roles, "send"):
+                if not channels.does_user_have_permission(channel_name, user_roles, "send"):
                     return {"cmd": "error", "val": "You do not have permission to send messages in this channel"}
 
                 # Save the message to the channel
@@ -82,7 +82,7 @@ def handle(ws, message, server_data=None):
                 if not message:
                     return {"cmd": "error", "val": "Message not found or cannot be deleted"}
                 
-                roles = users.get_user_roles(getattr(ws, 'username', None))
+                user_roles = users.get_user_roles(getattr(ws, 'username', None))
                 if not roles:
                     return {"cmd": "error", "val": "User roles not found"}
                 
