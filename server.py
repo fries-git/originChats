@@ -44,8 +44,8 @@ class OriginChatsServer:
             await send_to_client(websocket, {
                 "cmd": "handshake",
                 "val": {
-                    "server": "1.1.0",
-                    "version": self.version,
+                    "server": self.config["server"],
+                    "version": "1.1.0",
                     "validator_key": "originChats-" + self.config["rotur"]["validate_key"]
                 }
             })
