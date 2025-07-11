@@ -141,6 +141,12 @@ def main():
         "max_lengths": {
             "post_content": max_message_length
         },
+        "rate_limiting": {
+            "enabled": True,
+            "messages_per_minute": 30,
+            "burst_limit": 5,
+            "cooldown_seconds": 60
+        },
         "DB": {
             "channels": "db/channels.json",
             "users": {

@@ -38,6 +38,17 @@ def handle(ws, message, server_data=None):
                 if not content:
                     return {"cmd": "error", "val": "Message content cannot be empty"}
 
+                # Check message length limit from config
+                max_length = server_data.get("config", {}).get("max_lengths", {}).get("post_content", 2000)
+                if len(content) > max_length:
+                    return {"cmd": "error", "val": f"Message too long. Maximum length is {max_length} characters"}
+
+                # Check rate limiting if enabled
+                if server_data and server_data.get("rate_limiter"):
+                    is_allowed, reason, wait_time = server_data["rate_limiter"].is_allowed(user)
+                    if not is_allowed:
+                        return {"cmd": "error", "val": f"Rate limit: {reason}"}
+
                 user_roles = users.get_user_roles(user)
                 if not user_roles:
                     return {"cmd": "error", "val": "User roles not found"}
@@ -297,6 +308,43 @@ def handle(ws, message, server_data=None):
                     # Reload all plugins
                     server_data["plugin_manager"].reload_all_plugins()
                     return {"cmd": "plugins_reload", "val": "All plugins reloaded successfully"}
+            case "rate_limit_status":
+                # Handle request for rate limit status (admin or self)
+                username = getattr(ws, 'username', None)
+                if not username:
+                    return {"cmd": "error", "val": "User not authenticated"}
+                
+                target_user = message.get("user", username)  # Default to self
+                user_roles = users.get_user_roles(username)
+                
+                # Allow users to check their own status, or admins to check anyone's
+                if target_user != username and (not user_roles or "owner" not in user_roles):
+                    return {"cmd": "error", "val": "Access denied: can only check your own rate limit status"}
+                
+                if not server_data or not server_data.get("rate_limiter"):
+                    return {"cmd": "error", "val": "Rate limiter not available or disabled"}
+                
+                status = server_data["rate_limiter"].get_user_status(target_user)
+                return {"cmd": "rate_limit_status", "user": target_user, "status": status}
+            case "rate_limit_reset":
+                # Handle request to reset rate limit for a user (admin only)
+                username = getattr(ws, 'username', None)
+                if not username:
+                    return {"cmd": "error", "val": "User not authenticated"}
+                
+                user_roles = users.get_user_roles(username)
+                if not user_roles or "owner" not in user_roles:
+                    return {"cmd": "error", "val": "Access denied: owner role required"}
+                
+                target_user = message.get("user")
+                if not target_user:
+                    return {"cmd": "error", "val": "User parameter is required"}
+                
+                if not server_data or not server_data.get("rate_limiter"):
+                    return {"cmd": "error", "val": "Rate limiter not available or disabled"}
+                
+                server_data["rate_limiter"].reset_user(target_user)
+                return {"cmd": "rate_limit_reset", "user": target_user, "val": f"Rate limit reset for user {target_user}"}
             case _:
                 return {"cmd": "error", "val": f"Unknown command: {message.get('cmd')}"}
     # except Exception as e:

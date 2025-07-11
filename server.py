@@ -2,6 +2,7 @@ import asyncio, websockets, json, os
 from handlers.websocket_utils import send_to_client, heartbeat, broadcast_to_all
 from handlers.auth import handle_authentication
 from handlers import message as message_handler
+from handlers.rate_limiter import RateLimiter
 import watchers
 from plugin_manager import PluginManager
 
@@ -20,10 +21,25 @@ class OriginChatsServer:
         self.main_event_loop = None
         self.file_observer = None
         
+        # Initialize rate limiter if enabled
+        rate_config = self.config.get("rate_limiting", {})
+        if rate_config.get("enabled", False):
+            self.rate_limiter = RateLimiter(
+                messages_per_minute=rate_config.get("messages_per_minute", 30),
+                burst_limit=rate_config.get("burst_limit", 5),
+                cooldown_seconds=rate_config.get("cooldown_seconds", 60)
+            )
+        else:
+            self.rate_limiter = None
+        
         # Initialize plugin manager
         self.plugin_manager = PluginManager()
         
         print(f"[OriginChatsWS] OriginChats WebSocket Server v{self.version} initialized")
+        if self.rate_limiter:
+            print(f"[OriginChatsWS] Rate limiting enabled: {rate_config.get('messages_per_minute', 30)} msg/min, burst: {rate_config.get('burst_limit', 5)}")
+        else:
+            print(f"[OriginChatsWS] Rate limiting disabled")
     
     async def handle_client(self, websocket):
         """WebSocket connection handler"""
@@ -72,7 +88,8 @@ class OriginChatsServer:
                     server_data = {
                         "connected_clients": self.connected_clients,
                         "config": self.config,
-                        "plugin_manager": self.plugin_manager
+                        "plugin_manager": self.plugin_manager,
+                        "rate_limiter": self.rate_limiter
                     }
                     
                     # Handle message

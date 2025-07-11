@@ -1,4 +1,3 @@
-
 # this plugin will be accessible to any user with any of the following roles
 # "owner" is the highest level of access, allowing full control over the server
 # "admin" role is also allowed for administrative commands
@@ -264,6 +263,103 @@ def on_new_message(ws, message_data, server_data=None):
                     send_message_to_channel(channel, f"Purged the last {number} messages from channel '{channel}'.", server_data)
                 else:
                     send_message_to_channel(channel, f"Failed to purge messages from channel '{channel}'.", server_data)
+            case "rate_limit_status":
+                if len(parts) < 3:
+                    # Check own rate limit status
+                    username_to_check = username
+                else:
+                    # Check another user's status (admin only)
+                    username_to_check = parts[2]
+                
+                # Send WebSocket message to get rate limit status
+                import asyncio
+                import json
+                from handlers.websocket_utils import send_to_client
+                
+                # Create a rate limit status request
+                status_request = {
+                    "cmd": "rate_limit_status",
+                    "user": username_to_check
+                }
+                
+                # Use the message handler directly
+                from handlers import message as message_handler
+                response = message_handler.handle(ws, status_request, server_data)
+                
+                if response and response.get("cmd") == "rate_limit_status":
+                    status = response.get("status", {})
+                    status_msg = (
+                        f"Rate limit status for {response.get('user', username_to_check)}:\n"
+                        f"Messages this minute: {status.get('messages_this_minute', 0)}/{status.get('messages_per_minute_limit', 30)}\n"
+                        f"Recent messages (10s): {status.get('recent_messages', 0)}/{status.get('burst_limit', 5)}\n"
+                    )
+                    if status.get('cooldown_remaining', 0) > 0:
+                        status_msg += f"Cooldown remaining: {status.get('cooldown_remaining', 0):.1f} seconds"
+                    else:
+                        status_msg += "No cooldown active"
+                    send_message_to_channel(channel, status_msg, server_data)
+                else:
+                    error_msg = response.get("val", "Failed to get rate limit status") if response else "Failed to get rate limit status"
+                    send_message_to_channel(channel, error_msg, server_data)
+            case "rate_limit_reset":
+                if len(parts) < 3:
+                    send_message_to_channel(channel, "Usage: !server rate_limit_reset <username>", server_data)
+                    return
+                username_to_reset = parts[2]
+                
+                # Create a rate limit reset request
+                reset_request = {
+                    "cmd": "rate_limit_reset",
+                    "user": username_to_reset
+                }
+                
+                # Use the message handler directly
+                from handlers import message as message_handler
+                response = message_handler.handle(ws, reset_request, server_data)
+                
+                if response and response.get("cmd") == "rate_limit_reset":
+                    send_message_to_channel(channel, response.get("val", f"Rate limit reset for {username_to_reset}"), server_data)
+                else:
+                    error_msg = response.get("val", "Failed to reset rate limit") if response else "Failed to reset rate limit"
+                    send_message_to_channel(channel, error_msg, server_data)
+            case "rate_limit_toggle":
+                # Toggle rate limiting on/off (admin only)
+                user_roles = users.get_user_roles(username)
+                if not user_roles or "owner" not in user_roles:
+                    send_message_to_channel(channel, "Access denied: owner role required", server_data)
+                    return
+                
+                # Get current config
+                config = server_data.get("config", {})
+                rate_config = config.get("rate_limiting", {})
+                current_enabled = rate_config.get("enabled", False)
+                
+                # Toggle the setting
+                new_enabled = not current_enabled
+                rate_config["enabled"] = new_enabled
+                
+                # Update the rate limiter in server_data
+                if new_enabled and not server_data.get("rate_limiter"):
+                    # Create new rate limiter if enabling
+                    from handlers.rate_limiter import RateLimiter
+                    server_data["rate_limiter"] = RateLimiter(
+                        messages_per_minute=rate_config.get("messages_per_minute", 30),
+                        burst_limit=rate_config.get("burst_limit", 5),
+                        cooldown_seconds=rate_config.get("cooldown_seconds", 60)
+                    )
+                elif not new_enabled:
+                    # Remove rate limiter if disabling
+                    server_data["rate_limiter"] = None
+                
+                # Save config to file
+                import json
+                import os
+                config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config.json")
+                with open(config_path, "w") as f:
+                    json.dump(config, f, indent=4)
+                
+                status_msg = f"Rate limiting {'enabled' if new_enabled else 'disabled'}"
+                send_message_to_channel(channel, status_msg, server_data)
             case "help":
                 help_text = ""
                 match parts[2] if len(parts) > 2 else None:
@@ -298,6 +394,9 @@ def on_new_message(ws, message_data, server_data=None):
                             "!server ban <username> - Ban a user from the server\n"
                             "!server unban <username> - Unban a user from the server\n"
                             "!server list_banned - List all banned users\n"
+                            "!server rate_limit_status [username] - Check rate limit status (self or specific user for admins)\n"
+                            "!server rate_limit_reset <username> - Reset rate limit for a user (admin only)\n"
+                            "!server rate_limit_toggle - Toggle rate limiting on/off (admin only)\n"
                         )
                     case "messages":
                         help_text += (
