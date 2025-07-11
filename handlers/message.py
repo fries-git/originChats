@@ -56,10 +56,23 @@ def handle(ws, message, server_data=None):
 
                 channels.save_channel_message(channel_name, out_msg)
 
+                # Trigger new_message event for plugins
+                if server_data and "plugin_manager" in server_data:
+                    server_data["plugin_manager"].trigger_event("new_message", ws, {
+                        "content": content,
+                        "channel": channel_name,
+                        "user": user,
+                        "message": out_msg
+                    }, server_data)
+
                 # Optionally broadcast to all clients
                 return {"cmd": "message_new", "message": out_msg, "channel": channel_name, "global": True}
             case "message_edit":
                 # Handle message edit
+                user = getattr(ws, 'username', None)
+                if not user:
+                    return {"cmd": "error", "val": "User not authenticated"}
+                
                 message_id = message.get("id")
                 channel_name = message.get("channel")
                 new_content = message.get("content")
@@ -72,6 +85,10 @@ def handle(ws, message, server_data=None):
                 return {"cmd": "message_edit", "id": message_id, "content": new_content, "channel": channel_name, "global": True}
             case "message_delete":
                 # Handle message delete
+                username = getattr(ws, 'username', None)
+                if not username:
+                    return {"cmd": "error", "val": "User not authenticated"}
+                
                 message_id = message.get("id")
                 channel_name = message.get("channel")
                 if not message_id or not channel_name:
@@ -82,13 +99,9 @@ def handle(ws, message, server_data=None):
                 if not message:
                     return {"cmd": "error", "val": "Message not found or cannot be deleted"}
                 
-                user_roles = users.get_user_roles(getattr(ws, 'username', None))
+                user_roles = users.get_user_roles(username)
                 if not user_roles:
                     return {"cmd": "error", "val": "User roles not found"}
-                
-                username = getattr(ws, 'username', None)
-                if not username:
-                    return {"cmd": "error", "val": "User not authenticated"}
                 
                 if not message.get("user") == username:
                     # If the user is not the original sender, check if they have permission to delete
@@ -174,6 +187,46 @@ def handle(ws, message, server_data=None):
                         })
                 
                 return {"cmd": "users_online", "users": online_users}
+            case "plugins_list":
+                # Handle request for loaded plugins (admin only)
+                username = getattr(ws, 'username', None)
+                if not username:
+                    return {"cmd": "error", "val": "User not authenticated"}
+                
+                user_roles = users.get_user_roles(username)
+                if not user_roles or "owner" not in user_roles:
+                    return {"cmd": "error", "val": "Access denied: owner role required"}
+                
+                if not server_data or "plugin_manager" not in server_data:
+                    return {"cmd": "error", "val": "Plugin manager not available"}
+                
+                plugins = server_data["plugin_manager"].get_loaded_plugins()
+                return {"cmd": "plugins_list", "plugins": plugins}
+            case "plugins_reload":
+                # Handle request to reload plugins (admin only)
+                username = getattr(ws, 'username', None)
+                if not username:
+                    return {"cmd": "error", "val": "User not authenticated"}
+                
+                user_roles = users.get_user_roles(username)
+                if not user_roles or "owner" not in user_roles:
+                    return {"cmd": "error", "val": "Access denied: owner role required"}
+                
+                if not server_data or "plugin_manager" not in server_data:
+                    return {"cmd": "error", "val": "Plugin manager not available"}
+                
+                plugin_name = message.get("plugin")
+                if plugin_name:
+                    # Reload specific plugin
+                    success = server_data["plugin_manager"].reload_plugin(plugin_name)
+                    if success:
+                        return {"cmd": "plugins_reload", "val": f"Plugin '{plugin_name}' reloaded successfully"}
+                    else:
+                        return {"cmd": "error", "val": f"Failed to reload plugin '{plugin_name}'"}
+                else:
+                    # Reload all plugins
+                    server_data["plugin_manager"].reload_all_plugins()
+                    return {"cmd": "plugins_reload", "val": "All plugins reloaded successfully"}
             case _:
                 return {"cmd": "error", "val": f"Unknown command: {message.get('cmd')}"}
     # except Exception as e:

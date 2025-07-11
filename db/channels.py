@@ -186,3 +186,154 @@ def delete_channel_message(channel_name, message_id):
         return True
     except FileNotFoundError:
         return False
+    
+def get_channels():
+    """
+    Get all channels from the channels index.
+
+    Returns:
+        list: A list of channel info dicts.
+    """
+    try:
+        with open(channels_index, 'r') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return []  # No channels found
+    
+def create_channel(channel_name, channel_type):
+    """
+    Create a new channel.
+
+    Args:
+        channel_name (str): The name of the channel to create.
+        channel_type (str): The type of the channel (e.g., "text", "voice").
+
+    Returns:
+        bool: True if the channel was created successfully, False if it already exists.
+    """
+    try:
+        with open(channels_index, 'r') as f:
+            channels = json.load(f)
+    except FileNotFoundError:
+        channels = []
+
+    # Check if the channel already exists
+    if any(channel['name'] == channel_name for channel in channels):
+        return False  # Channel already exists
+
+    new_channel = {
+        "name": channel_name,
+        "type": channel_type,
+        "permissions": {
+            "view": ["owner"],
+            "edit": ["owner"],
+            "send": ["owner"]
+        }
+    }
+
+    channels.append(new_channel)
+
+    # Save the updated channels index
+    with open(channels_index, 'w') as f:
+        json.dump(channels, f, indent=4)
+
+    return True
+
+def delete_channel(channel_name):
+    """
+    Delete a channel.
+
+    Args:
+        channel_name (str): The name of the channel to delete.
+
+    Returns:
+        bool: True if the channel was deleted successfully, False if it does not exist.
+    """
+    try:
+        with open(channels_index, 'r') as f:
+            channels = json.load(f)
+        
+        new_channels = [channel for channel in channels if channel['name'] != channel_name]
+
+        if len(new_channels) == len(channels):
+            return False  # Channel not found
+
+        # Save the updated channels index
+        with open(channels_index, 'w') as f:
+            json.dump(new_channels, f, indent=4)
+
+        # Remove the channel's message file
+        os.remove(f"{channels_db_dir}/{channel_name}.json")
+
+        return True
+    except FileNotFoundError:
+        return False  # Channels index not found
+    
+def set_channel_permissions(channel_name, role, permission, allow=True):
+    """
+    Set permissions for a specific role on a channel.
+
+    Args:
+        channel_name (str): The name of the channel.
+        role (str): The role to set permissions for.
+        permission (str): The permission to set (e.g., "view", "edit", "send").
+
+    Returns:
+        bool: True if permissions were set successfully, False if the channel does not exist.
+    """
+    try:
+        with open(channels_index, 'r') as f:
+            channels = json.load(f)
+
+        for channel in channels:
+            if channel['name'] == channel_name:
+                if permission not in channel['permissions']:
+                    channel['permissions'][permission] = []
+                if role not in channel['permissions'][permission]:
+                    if allow:
+                        channel['permissions'][permission].append(role)
+                    else:                        # If removing permission, ensure the role exists before removing
+                        if role in channel['permissions'][permission]:
+                            channel['permissions'][permission].remove(role)
+                
+                # Save the updated channels index
+                with open(channels_index, 'w') as f:
+                    json.dump(channels, f, indent=4)
+                
+                return True
+        
+        return False  # Channel not found
+    except FileNotFoundError:
+        return False  # Channels index not found
+    
+def reorder_channel(channel_name, new_position):
+    """
+    Reorder a channel in the channels index.
+
+    Args:
+        channel_name (str): The name of the channel to reorder.
+        new_position (int): The new position for the channel (0-based index).
+
+    Returns:
+        bool: True if the channel was reordered successfully, False if it does not exist.
+    """
+    try:
+        with open(channels_index, 'r') as f:
+            channels = json.load(f)
+
+        for i, channel in enumerate(channels):
+            if channel['name'] == channel_name:
+                # Remove the channel from its current position
+                channels.pop(i)
+                # Insert it at the new position
+                channels.insert(int(new_position), channel)
+
+                # Save the updated channels index
+                with open(channels_index, 'w') as f:
+                    json.dump(channels, f, indent=4)
+                
+                return True
+        
+        return False  # Channel not found
+    except FileNotFoundError:
+        return False  # Channels index not found

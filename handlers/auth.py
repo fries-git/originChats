@@ -19,6 +19,13 @@ async def handle_authentication(websocket, data, config_data, connected_clients,
     websocket.authenticated = True
     websocket.username = validator.split(",")[0].lower()  # Extract username from validator
 
+    # Check if user is banned
+    if users.is_user_banned(websocket.username):
+        await send_to_client(websocket, {"cmd": "auth_error", "val": "Access denied: You are banned from this server"})
+        print(f"[OriginChatsWS] Banned user {websocket.username} attempted to connect from {client_ip}")
+        websocket.authenticated = False
+        return False
+
     # Create user if doesn't exist
     if not users.user_exists(websocket.username):
         users.add_user(websocket.username)

@@ -85,3 +85,66 @@ def get_users():
         return user_arr
     except FileNotFoundError:
         return []
+    
+def save_user(user_id, user_data):
+    """
+    Save user data to the users database.
+    """
+    try:
+        with open(users_index, "r") as f:
+            users = json.load(f)
+    except FileNotFoundError:
+        users = {}
+
+    users[user_id] = user_data
+
+    with open(users_index, "w") as f:
+        json.dump(users, f, indent=4)
+    
+def get_banned_users():
+    """
+    Get a list of all banned users.
+    """
+    try:
+        with open(users_index, "r") as f:
+            users_data = json.load(f)
+        
+        banned_users = []
+        for user_id, user_data in users_data.items():
+            if "banned" in user_data.get("roles", []):
+                banned_users.append(user_id)
+        
+        return banned_users
+    except FileNotFoundError:
+        return []
+
+def is_user_banned(user_id):
+    """
+    Check if a user is banned by checking if they have the 'banned' role.
+    """
+    user = get_user(user_id)
+    if user and "banned" in user.get("roles", []):
+        return True
+    return False
+
+def ban_user(user_id):
+    """
+    Ban a user by giving them the 'banned' role.
+    """
+    user = get_user(user_id)
+    if user and "banned" not in user.get("roles", []):
+        user["roles"].append("banned")
+        save_user(user_id, user)
+        return True
+    return False
+
+def unban_user(user_id):
+    """
+    Unban a user by removing the 'banned' role.
+    """
+    user = get_user(user_id)
+    if user and "banned" in user["roles"]:
+        user["roles"].remove("banned")
+        save_user(user_id, user)
+        return True
+    return False

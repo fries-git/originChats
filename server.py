@@ -3,6 +3,7 @@ from handlers.websocket_utils import send_to_client, heartbeat, broadcast_to_all
 from handlers.auth import handle_authentication
 from handlers import message as message_handler
 import watchers
+from plugin_manager import PluginManager
 
 class OriginChatsServer:
     """OriginChats WebSocket server"""
@@ -18,6 +19,9 @@ class OriginChatsServer:
         self.heartbeat_interval = 30
         self.main_event_loop = None
         self.file_observer = None
+        
+        # Initialize plugin manager
+        self.plugin_manager = PluginManager()
         
         print(f"[OriginChatsWS] OriginChats WebSocket Server v{self.version} initialized")
     
@@ -40,7 +44,7 @@ class OriginChatsServer:
             await send_to_client(websocket, {
                 "cmd": "handshake",
                 "val": {
-                    "server": self.config["server"],
+                    "server": "1.1.0",
                     "version": self.version,
                     "validator_key": "originChats-" + self.config["rotur"]["validate_key"]
                 }
@@ -67,7 +71,8 @@ class OriginChatsServer:
                     # Create server data object for message handler
                     server_data = {
                         "connected_clients": self.connected_clients,
-                        "config": self.config
+                        "config": self.config,
+                        "plugin_manager": self.plugin_manager
                     }
                     
                     # Handle message

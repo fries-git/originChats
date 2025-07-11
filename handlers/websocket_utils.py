@@ -42,3 +42,25 @@ async def broadcast_to_all(connected_clients, message):
         print(f"[OriginChatsWS] Removed {len(disconnected)} disconnected clients")
     
     return disconnected
+
+async def disconnect_user(connected_clients, username, reason="User disconnected"):
+    """Disconnect a specific user by username"""
+    disconnected = []
+    clients_copy = connected_clients.copy()
+    
+    for ws in clients_copy:
+        if hasattr(ws, 'username') and ws.username == username:
+            try:
+                await send_to_client(ws, {"cmd": "disconnect", "reason": reason})
+                await ws.close()
+                disconnected.append(ws)
+                print(f"[OriginChatsWS] Disconnected user {username}: {reason}")
+            except Exception as e:
+                print(f"[OriginChatsWS] Error disconnecting user {username}: {str(e)}")
+                disconnected.append(ws)
+    
+    # Clean up disconnected clients
+    for ws in disconnected:
+        connected_clients.discard(ws)
+    
+    return len(disconnected)
