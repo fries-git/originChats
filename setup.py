@@ -143,8 +143,8 @@ def main():
         },
         "rate_limiting": {
             "enabled": True,
-            "messages_per_minute": 30,
-            "burst_limit": 5,
+            "messages_per_minute": 60,
+            "burst_limit": 10,
             "cooldown_seconds": 60
         },
         "DB": {
