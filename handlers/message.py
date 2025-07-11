@@ -49,7 +49,9 @@ def handle(ws, message, server_data=None):
                 if server_data and server_data.get("rate_limiter"):
                     is_allowed, reason, wait_time = server_data["rate_limiter"].is_allowed(user)
                     if not is_allowed:
-                        return {"cmd": "error", "val": f"Rate limit: {reason}"}
+                        # Convert wait time to milliseconds and send rate_limit packet
+                        wait_time_ms = int(wait_time * 1000)
+                        return {"cmd": "rate_limit", "length": wait_time_ms}
 
                 user_roles = users.get_user_roles(user)
                 if not user_roles:
@@ -102,6 +104,14 @@ def handle(ws, message, server_data=None):
                 if not user:
                     return {"cmd": "error", "val": "User not authenticated"}
                 
+                # Check rate limiting if enabled
+                if server_data and server_data.get("rate_limiter"):
+                    is_allowed, reason, wait_time = server_data["rate_limiter"].is_allowed(user)
+                    if not is_allowed:
+                        # Convert wait time to milliseconds and send rate_limit packet
+                        wait_time_ms = int(wait_time * 1000)
+                        return {"cmd": "rate_limit", "length": wait_time_ms}
+                
                 message_id = message.get("id")
                 channel_name = message.get("channel")
                 new_content = message.get("content")
@@ -117,6 +127,14 @@ def handle(ws, message, server_data=None):
                 username = getattr(ws, 'username', None)
                 if not username:
                     return {"cmd": "error", "val": "User not authenticated"}
+                
+                # Check rate limiting if enabled
+                if server_data and server_data.get("rate_limiter"):
+                    is_allowed, reason, wait_time = server_data["rate_limiter"].is_allowed(username)
+                    if not is_allowed:
+                        # Convert wait time to milliseconds and send rate_limit packet
+                        wait_time_ms = int(wait_time * 1000)
+                        return {"cmd": "rate_limit", "length": wait_time_ms}
                 
                 message_id = message.get("id")
                 channel_name = message.get("channel")

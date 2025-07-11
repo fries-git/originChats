@@ -145,7 +145,7 @@ def main():
             "enabled": True,
             "messages_per_minute": 60,
             "burst_limit": 10,
-            "cooldown_seconds": 60
+            "cooldown_seconds": 30
         },
         "DB": {
             "channels": "db/channels.json",

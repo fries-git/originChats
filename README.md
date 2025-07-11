@@ -122,3 +122,41 @@ Each module implements appropriate error handling:
 3. **WebSocket Changes**: Update `websocket_utils.py` for utility functions
 4. **Authentication Changes**: Modify `auth.py`
 5. **Server Configuration**: Update the `OriginChatsServer` class in `server.py`
+
+## Rate Limiting
+
+OriginChats includes built-in rate limiting to prevent spam and abuse:
+
+### Configuration
+Rate limiting is configured in `config.json`:
+```json
+{
+  "rate_limiting": {
+    "enabled": true,
+    "messages_per_minute": 60,
+    "burst_limit": 10,
+    "cooldown_seconds": 30
+  }
+}
+```
+
+### Rate Limited Actions
+The following actions are subject to rate limiting:
+- **Message sending** (`message_new`)
+- **Message editing** (`message_edit`) 
+- **Message deletion** (`message_delete`)
+
+### Rate Limit Response
+When a user is rate limited, they receive:
+```json
+{
+  "cmd": "rate_limit",
+  "length": 30000
+}
+```
+Where `length` is the wait time in milliseconds before they can try again.
+
+### Rate Limiting Logic
+- **Per-minute limit**: Users can perform up to `messages_per_minute` actions per minute
+- **Burst protection**: Users can't perform more than `burst_limit` actions in 10 seconds
+- **Cooldown**: If burst limit is exceeded, user enters cooldown for `cooldown_seconds`
