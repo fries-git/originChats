@@ -337,3 +337,59 @@ def reorder_channel(channel_name, new_position):
         return False  # Channel not found
     except FileNotFoundError:
         return False  # Channels index not found
+
+def get_message_replies(channel_name, message_id, limit=50):
+    """
+    Get all replies to a specific message.
+
+    Args:
+        channel_name (str): The name of the channel.
+        message_id (str): The ID of the message to get replies for.
+        limit (int): Maximum number of replies to return.
+
+    Returns:
+        list: A list of messages that are replies to the specified message.
+    """
+    try:
+        with open(f"{channels_db_dir}/{channel_name}.json", 'r') as f:
+            channel_data = json.load(f)
+
+        replies = []
+        for msg in channel_data:
+            if msg.get("reply_to", {}).get("id") == message_id:
+                replies.append(msg)
+                if len(replies) >= limit:
+                    break
+        
+        return replies
+    except FileNotFoundError:
+        return []  # Channel not found
+    
+def purge_messages(channel_name, count):
+    """
+    Purge the last 'count' messages from a channel.
+
+    Args:
+        channel_name (str): The name of the channel.
+        count (int): The number of messages to purge.
+
+    Returns:
+        bool: True if messages were purged successfully, False if the channel does not exist or has fewer messages.
+    """
+    try:
+        with open(f"{channels_db_dir}/{channel_name}.json", 'r') as f:
+            channel_data = json.load(f)
+
+        if len(channel_data) < count:
+            return False  # Not enough messages to purge
+
+        # Remove the last 'count' messages
+        new_data = channel_data[:-count]
+
+        # Save the updated channel data
+        with open(f"{channels_db_dir}/{channel_name}.json", 'w') as f:
+            json.dump(new_data, f, separators=(',', ':'), ensure_ascii=False)
+
+        return True
+    except FileNotFoundError:
+        return False  # Channel not found

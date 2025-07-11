@@ -252,6 +252,18 @@ def on_new_message(ws, message_data, server_data=None):
                     send_message_to_channel(channel, f"Role '{role_name}' updated successfully with new color '{new_color}'.", server_data)
                 else:
                     send_message_to_channel(channel, f"Failed to update role '{role_name}'. It may not exist.", server_data)
+            case "message_purge":
+                if len(parts) < 3 or not parts[2].isdigit():
+                    send_message_to_channel(channel, "Usage: !server message_purge <number>", server_data)
+                    return
+                number = int(parts[2])
+                if number <= 0:
+                    send_message_to_channel(channel, "Number must be greater than 0.", server_data)
+                    return
+                if channels.purge_messages(channel, number):
+                    send_message_to_channel(channel, f"Purged the last {number} messages from channel '{channel}'.", server_data)
+                else:
+                    send_message_to_channel(channel, f"Failed to purge messages from channel '{channel}'.", server_data)
             case "help":
                 help_text = ""
                 match parts[2] if len(parts) > 2 else None:
@@ -286,6 +298,10 @@ def on_new_message(ws, message_data, server_data=None):
                             "!server ban <username> - Ban a user from the server\n"
                             "!server unban <username> - Unban a user from the server\n"
                             "!server list_banned - List all banned users\n"
+                        )
+                    case "messages":
+                        help_text += (
+                            "!server message_purge number - Purge the last 'number' of messages from the current channel\n"
                         )
                     case None:
                         help_text += (

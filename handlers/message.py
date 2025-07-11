@@ -19,7 +19,8 @@ def handle(ws, message, server_data=None):
         if not isinstance(message, dict):
             return {"cmd": "error", "val": f"Invalid message format: expected a dictionary, got {type(message).__name__}"}
 
-        match message.get("cmd"):
+        match_cmd = message.get("cmd")
+        match match_cmd:
             case "ping":
                 # Handle ping command
                 return {"cmd": "pong", "val": "pong"}
@@ -27,6 +28,7 @@ def handle(ws, message, server_data=None):
                 # Handle chat message
                 channel_name = message.get("channel")
                 content = message.get("content")
+                reply_to = message.get("reply_to")  # Optional: ID of message being replied to
                 user = getattr(ws, 'username', None)
 
                 if not channel_name or not content or not user:
@@ -44,6 +46,13 @@ def handle(ws, message, server_data=None):
                 if not channels.does_user_have_permission(channel_name, user_roles, "send"):
                     return {"cmd": "error", "val": "You do not have permission to send messages in this channel"}
 
+                # Validate reply_to if provided
+                replied_message = None
+                if reply_to:
+                    replied_message = channels.get_channel_message(channel_name, reply_to)
+                    if not replied_message:
+                        return {"cmd": "error", "val": "The message you're trying to reply to was not found"}
+
                 # Save the message to the channel
                 out_msg = {
                     "user": user,
@@ -53,6 +62,13 @@ def handle(ws, message, server_data=None):
                     "pinned": False,
                     "id": str(uuid.uuid4())
                 }
+
+                # Add reply information if this is a reply
+                if reply_to and replied_message:
+                    out_msg["reply_to"] = {
+                        "id": reply_to,
+                        "user": replied_message.get("user")
+                    }
 
                 channels.save_channel_message(channel_name, out_msg)
 
@@ -146,6 +162,60 @@ def handle(ws, message, server_data=None):
 
                 messages = channels.get_channel_messages(channel_name, limit)
                 return {"cmd": "messages_get", "channel": channel_name, "messages": messages}
+            case "message_get":
+                # Handle request for a specific message by ID
+                channel_name = message.get("channel")
+                message_id = message.get("id")
+
+                if not channel_name or not message_id:
+                    return {"cmd": "error", "val": "Channel name and message ID are required"}
+
+                username = getattr(ws, 'username', None)
+                if not username:
+                    return {"cmd": "error", "val": "User not authenticated"}
+
+                user_data = users.get_user(username)
+                if not user_data:
+                    return {"cmd": "error", "val": "User not found"}
+
+                # Check if user can see this channel
+                allowed_channels = channels.get_all_channels_for_roles(user_data.get("roles", []))
+                
+                if channel_name not in [c["name"] for c in allowed_channels if c.get("type") == "text"]:
+                    return {"cmd": "error", "val": "Access denied to this channel"}
+
+                # Get the specific message
+                msg = channels.get_channel_message(channel_name, message_id)
+                if not msg:
+                    return {"cmd": "error", "val": "Message not found"}
+
+                return {"cmd": "message_get", "channel": channel_name, "message": msg}
+            case "message_replies":
+                # Handle request for replies to a specific message
+                channel_name = message.get("channel")
+                message_id = message.get("id")
+                limit = message.get("limit", 50)
+
+                if not channel_name or not message_id:
+                    return {"cmd": "error", "val": "Channel name and message ID are required"}
+
+                username = getattr(ws, 'username', None)
+                if not username:
+                    return {"cmd": "error", "val": "User not authenticated"}
+
+                user_data = users.get_user(username)
+                if not user_data:
+                    return {"cmd": "error", "val": "User not found"}
+
+                # Check if user can see this channel
+                allowed_channels = channels.get_all_channels_for_roles(user_data.get("roles", []))
+                
+                if channel_name not in [c["name"] for c in allowed_channels if c.get("type") == "text"]:
+                    return {"cmd": "error", "val": "Access denied to this channel"}
+
+                # Get replies to the message
+                replies = channels.get_message_replies(channel_name, message_id, limit)
+                return {"cmd": "message_replies", "channel": channel_name, "message_id": message_id, "replies": replies}
             case "users_list":
                 # Handle request for all users list
                 username = getattr(ws, 'username', None)
