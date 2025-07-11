@@ -25,6 +25,8 @@ def handle(ws, message, server_data=None):
                 # Handle ping command
                 return {"cmd": "pong", "val": "pong"}
             case "message_new":
+                if server_data is None:
+                    return {"cmd": "error", "val": "Server data not available"}
                 # Handle chat message
                 channel_name = message.get("channel")
                 content = message.get("content")
@@ -39,7 +41,7 @@ def handle(ws, message, server_data=None):
                     return {"cmd": "error", "val": "Message content cannot be empty"}
 
                 # Check message length limit from config
-                max_length = server_data.get("config", {}).get("max_lengths", {}).get("post_content", 2000)
+                max_length = server_data.get("config", {}).get("limits", {}).get("post_content", 2000)
                 if len(content) > max_length:
                     return {"cmd": "error", "val": f"Message too long. Maximum length is {max_length} characters"}
 

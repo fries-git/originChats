@@ -138,7 +138,7 @@ def main():
     
     # Create config structure
     config = {
-        "max_lengths": {
+        "limits": {
             "post_content": max_message_length
         },
         "rate_limiting": {

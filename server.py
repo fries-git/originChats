@@ -61,6 +61,7 @@ class OriginChatsServer:
                 "cmd": "handshake",
                 "val": {
                     "server": self.config["server"],
+                    "limits": self.config["limits"],
                     "version": "1.1.0",
                     "validator_key": "originChats-" + self.config["rotur"]["validate_key"]
                 }
