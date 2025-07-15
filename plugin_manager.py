@@ -8,7 +8,11 @@ class PluginManager:
     """Manages loading and execution of plugins"""
     
     def __init__(self, plugins_dir="plugins"):
-        self.plugins_dir = plugins_dir
+        # Make plugins_dir relative to this file's location
+        if not os.path.isabs(plugins_dir):
+            self.plugins_dir = os.path.join(os.path.dirname(__file__), plugins_dir)
+        else:
+            self.plugins_dir = plugins_dir
         self.loaded_plugins = {}
         self.event_handlers = {}
         self.load_plugins()
