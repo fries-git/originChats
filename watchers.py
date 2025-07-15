@@ -4,6 +4,7 @@ import os
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 from db import users, channels, roles
+from logger import Logger
 
 class FileWatcher(FileSystemEventHandler):
     """File system event handler for watching JSON files"""
@@ -39,20 +40,19 @@ class FileWatcher(FileSystemEventHandler):
             return
         
         filename = os.path.basename(event.src_path)
-            
-        # Handle users.json changes
+             # Handle users.json changes
         if filename == 'users.json' or filename == 'roles.json':
-            print(f"[OriginChatsWS] Users file changed: {event.src_path}")
+            Logger.edit(f"Users file changed: {event.src_path}")
             asyncio.run_coroutine_threadsafe(
                 self._handle_users_change(), 
                 self.main_loop
             )
         
-        # Handle channels.json changes  
+        # Handle channels.json changes
         elif filename == 'channels.json':
-            print(f"[OriginChatsWS] Channels file changed: {event.src_path}")
+            Logger.edit(f"Channels file changed: {event.src_path}")
             asyncio.run_coroutine_threadsafe(
-                self._handle_channels_change(), 
+                self._handle_channels_change(),
                 self.main_loop
             )
     
@@ -64,7 +64,7 @@ class FileWatcher(FileSystemEventHandler):
             })
             
         except Exception as e:
-            print(f"[OriginChatsWS] Error handling users.json change: {e}")
+            Logger.error(f"Error handling users.json change: {e}")
     
     async def _handle_channels_change(self):
         """Handle channels.json file changes"""
@@ -79,7 +79,7 @@ class FileWatcher(FileSystemEventHandler):
             })
             
         except Exception as e:
-            print(f"[OriginChatsWS] Error handling channels.json change: {e}")
+            Logger.error(f"Error handling channels.json change: {e}")
 
 def setup_file_watchers(broadcast_func, main_loop):
     """Setup file watchers for users.json and channels.json"""
@@ -96,6 +96,6 @@ def setup_file_watchers(broadcast_func, main_loop):
     
     # Start watching
     observer.start()
-    print(f"[OriginChatsWS] File watcher started for directory: {db_dir}")
+    Logger.success(f"File watcher started for directory: {db_dir}")
     
     return observer

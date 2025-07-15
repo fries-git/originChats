@@ -6,6 +6,9 @@ required_permission = ["owner", "admin"]
 
 import os, json
 from db import channels, users
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from logger import Logger
 
 def getInfo():
     """Get information about the plugin"""
@@ -49,18 +52,18 @@ def on_new_message(ws, message_data, server_data=None):
     """Handle new chat messages"""
     
     if not ws or not hasattr(ws, 'authenticated') or not ws.authenticated:
-        print(f"[CLI Plugin] Authentication check failed: ws={ws}, authenticated={getattr(ws, 'authenticated', False)}")
+        Logger.warning(f"Authentication check failed: ws={ws}, authenticated={getattr(ws, 'authenticated', False)}")
         return
 
     username = getattr(ws, 'username', None)
     user_roles = users.get_user_roles(username)
     
     if not user_roles:
-        print("[CLI Plugin] No user roles found")
+        Logger.warning("No user roles found")
         return
 
     if not any(role in user_roles for role in required_permission):
-        print(f"[CLI Plugin] User lacks required permissions")
+        Logger.warning("User lacks required permissions")
         return
 
     content = message_data.get("content", "").strip()

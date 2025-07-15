@@ -1,6 +1,10 @@
 import requests
 from db import users, roles
 from handlers.websocket_utils import send_to_client, broadcast_to_all
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from logger import Logger
 
 async def handle_authentication(websocket, data, config_data, connected_clients, client_ip):
     """Handle user authentication"""
@@ -12,7 +16,7 @@ async def handle_authentication(websocket, data, config_data, connected_clients,
     response = requests.get(url, params={"key": key, "v": validator}, timeout=5)
     if response.status_code != 200 or response.json().get("valid") != True:
         await send_to_client(websocket, {"cmd": "auth_error", "val": "Invalid authentication"})
-        print(f"[OriginChatsWS] Client {client_ip} failed authentication")
+        Logger.error(f"Client {client_ip} failed authentication")
         return False
 
     # Set authentication state
@@ -22,14 +26,14 @@ async def handle_authentication(websocket, data, config_data, connected_clients,
     # Check if user is banned
     if users.is_user_banned(websocket.username):
         await send_to_client(websocket, {"cmd": "auth_error", "val": "Access denied: You are banned from this server"})
-        print(f"[OriginChatsWS] Banned user {websocket.username} attempted to connect from {client_ip}")
+        Logger.warning(f"Banned user {websocket.username} attempted to connect from {client_ip}")
         websocket.authenticated = False
         return False
 
     # Create user if doesn't exist
     if not users.user_exists(websocket.username):
         users.add_user(websocket.username)
-        print(f"[OriginChatsWS] User {websocket.username} created")
+        Logger.add(f"User {websocket.username} created")
 
     # Send success message
     await send_to_client(websocket, {"cmd": "auth_success", "val": "Authentication successful"})
@@ -38,7 +42,7 @@ async def handle_authentication(websocket, data, config_data, connected_clients,
     user = users.get_user(websocket.username)
     if not user:
         await send_to_client(websocket, {"cmd": "auth_error", "val": "User not found"})
-        print(f"[OriginChatsWS] User {websocket.username} not found after authentication")
+        Logger.error(f"User {websocket.username} not found after authentication")
         return False
 
     user["username"] = websocket.username
@@ -66,5 +70,5 @@ async def handle_authentication(websocket, data, config_data, connected_clients,
         }
     })
     
-    print(f"[OriginChatsWS] Client {client_ip} authenticated")
+    Logger.success(f"Client {client_ip} authenticated")
     return True

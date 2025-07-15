@@ -5,6 +5,7 @@ from handlers import message as message_handler
 from handlers.rate_limiter import RateLimiter
 import watchers
 from plugin_manager import PluginManager
+from logger import Logger
 
 class OriginChatsServer:
     """OriginChats WebSocket server"""
@@ -35,22 +36,22 @@ class OriginChatsServer:
         # Initialize plugin manager
         self.plugin_manager = PluginManager()
         
-        print(f"[OriginChatsWS] OriginChats WebSocket Server v{self.version} initialized")
+        Logger.info(f"OriginChats WebSocket Server v{self.version} initialized")
         if self.rate_limiter:
-            print(f"[OriginChatsWS] Rate limiting enabled: {rate_config.get('messages_per_minute', 30)} msg/min, burst: {rate_config.get('burst_limit', 5)}")
+            Logger.info(f"Rate limiting enabled: {rate_config.get('messages_per_minute', 30)} msg/min, burst: {rate_config.get('burst_limit', 5)}")
         else:
-            print(f"[OriginChatsWS] Rate limiting disabled")
+            Logger.warning("Rate limiting disabled")
     
     async def handle_client(self, websocket):
         """WebSocket connection handler"""
         # Get client info
         headers = websocket.request.headers
         client_ip = headers.get('CF-Connecting-IP') or headers.get('X-Forwarded-For') or websocket.remote_address[0]
-        print(f"[OriginChatsWS] New connection from {client_ip}")
+        Logger.add(f"New connection from {client_ip}")
         
         # Add to connected clients
         self.connected_clients.add(websocket)
-        print(f"[OriginChatsWS] Total connected clients: {len(self.connected_clients)}")
+        Logger.info(f"Total connected clients: {len(self.connected_clients)}")
         
         # Start heartbeat task
         heartbeat_task = asyncio.create_task(heartbeat(websocket, self.heartbeat_interval))
@@ -96,7 +97,7 @@ class OriginChatsServer:
                     # Handle message
                     response = message_handler.handle(websocket, data, server_data)
                     if not response:
-                        print(f"[OriginChatsWS] No response for message: {data}")
+                        Logger.warning(f"No response for message: {data}")
                         continue
                     
                     if response.get("global", False):
@@ -108,20 +109,20 @@ class OriginChatsServer:
                         await send_to_client(websocket, response)
 
                 except json.JSONDecodeError:
-                    print(f"[OriginChatsWS] Received invalid JSON: {message[:50]}...")
+                    Logger.error(f"Received invalid JSON: {message[:50]}...")
                 except Exception as e:
-                    print(f"[OriginChatsWS] Error processing message: {str(e)}")
+                    Logger.error(f"Error processing message: {str(e)}")
                     
         except websockets.exceptions.ConnectionClosed:
-            print(f"[OriginChatsWS] Connection closed by {client_ip}")
+            Logger.info(f"Connection closed by {client_ip}")
         except Exception as e:
-            print(f"[OriginChatsWS] Error handling connection: {str(e)}")
+            Logger.error(f"Error handling connection: {str(e)}")
         finally:
             # Clean up
             heartbeat_task.cancel()
             if websocket in self.connected_clients:
                 self.connected_clients.remove(websocket)
-                print(f"[OriginChatsWS] Client {client_ip} removed. {len(self.connected_clients)} clients remaining")
+                Logger.delete(f"Client {client_ip} removed. {len(self.connected_clients)} clients remaining")
                 
                 if getattr(websocket, "authenticated", False):
                     await broadcast_to_all(self.connected_clients, {
@@ -145,11 +146,11 @@ class OriginChatsServer:
         port = self.config.get("websocket", {}).get("port", 5613)
         host = self.config.get("websocket", {}).get("host", "127.0.0.1")
         
-        print(f"[OriginChatsWS] Starting WebSocket server on {host}:{port}")
+        Logger.info(f"Starting WebSocket server on {host}:{port}")
         
         try:
             async with websockets.serve(self.handle_client, host, port, ping_interval=None):
-                print(f"[OriginChatsWS] WebSocket server running at ws://{host}:{port}")
+                Logger.success(f"WebSocket server running at ws://{host}:{port}")
                 
                 # Keep the server running
                 await asyncio.Future()
@@ -158,4 +159,4 @@ class OriginChatsServer:
             if self.file_observer:
                 self.file_observer.stop()
                 self.file_observer.join()
-                print("[OriginChatsWS] File watcher stopped")
+                Logger.info("File watcher stopped")

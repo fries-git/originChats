@@ -1,6 +1,10 @@
 from db import channels, users, roles
 import time
 import uuid
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from logger import Logger
 
 def handle(ws, message, server_data=None):
     """
@@ -14,7 +18,7 @@ def handle(ws, message, server_data=None):
     """
     if True:
         # Process the message here
-        print(f"[OriginChatsWS] Received message: {message}")
+        Logger.get(f"Received message: {message}")
 
         if not isinstance(message, dict):
             return {"cmd": "error", "val": f"Invalid message format: expected a dictionary, got {type(message).__name__}"}

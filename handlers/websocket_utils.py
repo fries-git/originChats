@@ -1,4 +1,8 @@
 import asyncio, json, websockets
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from logger import Logger
 
 async def send_to_client(ws, message):
     """Send a message to a specific client"""
@@ -6,10 +10,10 @@ async def send_to_client(ws, message):
         await ws.send(json.dumps(message))
         return True
     except websockets.exceptions.ConnectionClosed:
-        print(f"[OriginChatsWS] Connection closed when trying to send message")
+        Logger.warning("Connection closed when trying to send message")
         return False
     except Exception as e:
-        print(f"[OriginChatsWS] Error sending message: {str(e)}")
+        Logger.error(f"Error sending message: {str(e)}")
         return False
 
 async def heartbeat(ws, heartbeat_interval=30):
@@ -20,9 +24,9 @@ async def heartbeat(ws, heartbeat_interval=30):
             if not await send_to_client(ws, {"cmd": "ping"}):
                 break
     except asyncio.CancelledError:
-        print(f"[OriginChatsWS] Heartbeat task cancelled")
+        Logger.info("Heartbeat task cancelled")
     except Exception as e:
-        print(f"[OriginChatsWS] Heartbeat error: {str(e)}")
+        Logger.error(f"Heartbeat error: {str(e)}")
 
 async def broadcast_to_all(connected_clients, message):
     """Broadcast a message to all connected clients"""
@@ -39,7 +43,7 @@ async def broadcast_to_all(connected_clients, message):
         connected_clients.discard(ws)  # Use discard instead of remove to avoid KeyError
     
     if disconnected:
-        print(f"[OriginChatsWS] Removed {len(disconnected)} disconnected clients")
+        Logger.delete(f"Removed {len(disconnected)} disconnected clients")
     
     return disconnected
 
@@ -54,9 +58,9 @@ async def disconnect_user(connected_clients, username, reason="User disconnected
                 await send_to_client(ws, {"cmd": "disconnect", "reason": reason})
                 await ws.close()
                 disconnected.append(ws)
-                print(f"[OriginChatsWS] Disconnected user {username}: {reason}")
+                Logger.delete(f"Disconnected user {username}: {reason}")
             except Exception as e:
-                print(f"[OriginChatsWS] Error disconnecting user {username}: {str(e)}")
+                Logger.error(f"Error disconnecting user {username}: {str(e)}")
                 disconnected.append(ws)
     
     # Clean up disconnected clients

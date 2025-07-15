@@ -1,7 +1,8 @@
 import os
 import importlib.util
 import inspect
-from typing import Dict, List, Any, Callable
+from typing import Dict, List, Any, Callable, Optional
+from logger import Logger
 
 class PluginManager:
     """Manages loading and execution of plugins"""
@@ -15,7 +16,7 @@ class PluginManager:
     def load_plugins(self):
         """Discover and load all plugins from the plugins directory"""
         if not os.path.exists(self.plugins_dir):
-            print(f"[PluginManager] Plugins directory '{self.plugins_dir}' not found")
+            Logger.warning(f"Plugins directory '{self.plugins_dir}' not found")
             return
         
         plugin_files = [f for f in os.listdir(self.plugins_dir) 
@@ -28,24 +29,27 @@ class PluginManager:
             try:
                 self._load_plugin(plugin_name, plugin_path)
             except Exception as e:
-                print(f"[PluginManager] Failed to load plugin '{plugin_name}': {str(e)}")
+                Logger.error(f"Failed to load plugin '{plugin_name}': {str(e)}")
     
     def _load_plugin(self, plugin_name: str, plugin_path: str):
         """Load a single plugin"""
         # Load the module
         spec = importlib.util.spec_from_file_location(plugin_name, plugin_path)
+        if spec is None or spec.loader is None:
+            Logger.error(f"Could not load spec for plugin '{plugin_name}' at '{plugin_path}'")
+            return
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         
         # Check if plugin has required functions
         if not hasattr(module, 'getInfo'):
-            print(f"[PluginManager] Plugin '{plugin_name}' missing getInfo() function")
+            Logger.warning(f"Plugin '{plugin_name}' missing getInfo() function")
             return
         
         # Get plugin info
         plugin_info = module.getInfo()
         if not isinstance(plugin_info, dict) or 'handles' not in plugin_info:
-            print(f"[PluginManager] Plugin '{plugin_name}' has invalid getInfo() return value")
+            Logger.warning(f"Plugin '{plugin_name}' has invalid getInfo() return value")
             return
         
         # Store the plugin
@@ -66,22 +70,22 @@ class PluginManager:
                     'handler': getattr(module, handler_name),
                     'required_permission': getattr(module, 'required_permission', [])
                 })
-                print(f"[PluginManager] Registered handler '{handler_name}' for event '{event}' from plugin '{plugin_name}'")
+                Logger.add(f"Registered handler '{handler_name}' for event '{event}' from plugin '{plugin_name}'")
             else:
-                print(f"[PluginManager] Warning: Plugin '{plugin_name}' handles '{event}' but missing '{handler_name}' function")
+                Logger.warning(f"Plugin '{plugin_name}' handles '{event}' but missing '{handler_name}' function")
         
-        print(f"[PluginManager] Loaded plugin '{plugin_name}': {plugin_info.get('name', 'Unknown')}")
-        print(f"[PluginManager] Handles events: {plugin_info['handles']}")
+        Logger.success(f"Loaded plugin '{plugin_name}': {plugin_info.get('name', 'Unknown')}")
+        Logger.info(f"Handles events: {plugin_info['handles']}")
     
     def get_loaded_plugins(self) -> Dict[str, Dict[str, Any]]:
         """Get information about all loaded plugins"""
         return {name: plugin['info'] for name, plugin in self.loaded_plugins.items()}
     
-    def trigger_event(self, event: str, ws, message_data: Dict[str, Any], server_data: Dict[str, Any] = None):
+    def trigger_event(self, event: str, ws, message_data: Dict[str, Any], server_data: Optional[Dict[str, Any]] = None):
         """Trigger an event for all plugins that handle it"""
         
         if event not in self.event_handlers:
-            print(f"[PluginManager] No handlers found for event '{event}'")
+            Logger.warning(f"No handlers found for event '{event}'")
             return
         
         for handler_info in self.event_handlers[event]:
@@ -109,14 +113,14 @@ class PluginManager:
                     handler(ws, message_data)
                     
             except Exception as e:
-                print(f"[PluginManager] Error in plugin '{handler_info['plugin_name']}' handler: {str(e)}")
+                Logger.error(f"Error in plugin '{handler_info['plugin_name']}' handler: {str(e)}")
                 import traceback
                 traceback.print_exc()
     
     def reload_plugin(self, plugin_name: str):
         """Reload a specific plugin"""
         if plugin_name not in self.loaded_plugins:
-            print(f"[PluginManager] Plugin '{plugin_name}' not found")
+            Logger.warning(f"Plugin '{plugin_name}' not found")
             return False
         
         plugin_path = self.loaded_plugins[plugin_name]['path']
@@ -131,15 +135,15 @@ class PluginManager:
         # Reload the plugin
         try:
             self._load_plugin(plugin_name, plugin_path)
-            print(f"[PluginManager] Reloaded plugin '{plugin_name}'")
+            Logger.success(f"Reloaded plugin '{plugin_name}'")
             return True
         except Exception as e:
-            print(f"[PluginManager] Failed to reload plugin '{plugin_name}': {str(e)}")
+            Logger.error(f"Failed to reload plugin '{plugin_name}': {str(e)}")
             return False
     
     def reload_all_plugins(self):
         """Reload all plugins"""
-        print("[PluginManager] Reloading all plugins...")
+        Logger.info("Reloading all plugins...")
         
         # Clear everything
         self.loaded_plugins.clear()
@@ -148,4 +152,4 @@ class PluginManager:
         # Reload all plugins
         self.load_plugins()
         
-        print(f"[PluginManager] Reloaded {len(self.loaded_plugins)} plugins")
+        Logger.success(f"Reloaded {len(self.loaded_plugins)} plugins")

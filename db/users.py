@@ -1,5 +1,8 @@
 import json, os
 from . import roles
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from logger import Logger
 _MODULE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 users_index = os.path.join(_MODULE_DIR, "users.json")

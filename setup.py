@@ -1,7 +1,8 @@
 import os, json, sys
+from logger import Logger
 
 # OriginChats Setup Script
-print("[OriginChats Setup] Starting OriginChats server configuration...")
+Logger.info("Starting OriginChats server configuration...")
 
 def get_input(prompt, default=None):
     """Get user input with optional default value"""
@@ -28,7 +29,7 @@ def setup_directories():
     for directory in directories:
         if not os.path.exists(directory):
             os.makedirs(directory)
-            print(f"[OriginChats Setup] Created directory: {directory}")
+            Logger.add(f"Created directory: {directory}")
 
 def create_default_files():
     """Create default database files"""
@@ -38,7 +39,7 @@ def create_default_files():
         default_users = {}
         with open(users_file, "w") as f:
             json.dump(default_users, f, indent=4)
-        print(f"[OriginChats Setup] Created {users_file}")
+        Logger.add(f"Created {users_file}")
     
     # Default channels.json
     channels_file = "db/channels.json"
@@ -57,7 +58,7 @@ def create_default_files():
         ]
         with open(channels_file, "w") as f:
             json.dump(default_channels, f, indent=4)
-        print(f"[OriginChats Setup] Created {channels_file}")
+        Logger.add(f"Created {channels_file}")
     
     # Default roles.json
     roles_file = "db/roles.json"
@@ -82,7 +83,7 @@ def create_default_files():
         }
         with open(roles_file, "w") as f:
             json.dump(default_roles, f, indent=4)
-        print(f"[OriginChats Setup] Created {roles_file}")
+        Logger.add(f"Created {roles_file}")
 
 def main():
     """Main setup function"""
@@ -96,7 +97,7 @@ def main():
     config_exists = os.path.exists("config.json")
     if config_exists:
         if not yes_no("Config file already exists. Overwrite?", "n"):
-            print("[OriginChats Setup] Setup cancelled")
+            Logger.warning("Setup cancelled")
             return
     
     print("Let's configure your OriginChats server...")
@@ -117,7 +118,7 @@ def main():
     try:
         ws_port = int(ws_port)
     except ValueError:
-        print("[OriginChats Setup] Invalid port number, using default 5613")
+        Logger.warning("Invalid port number, using default 5613")
         ws_port = 5613
     
     print()
@@ -215,8 +216,8 @@ if __name__ == "__main__":
         main()
     except KeyboardInterrupt:
         print()
-        print("[OriginChats Setup] Setup cancelled by user")
+        Logger.warning("Setup cancelled by user")
         sys.exit(1)
     except Exception as e:
-        print(f"[OriginChats Setup] Error during setup: {str(e)}")
+        Logger.error(f"Error during setup: {str(e)}")
         sys.exit(1)
