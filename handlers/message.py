@@ -162,17 +162,6 @@ def handle(ws, message, server_data=None):
                 if not channels.delete_channel_message(channel_name, message_id):
                     return {"cmd": "error", "val": "Failed to delete message"}
                 return {"cmd": "message_delete", "id": message_id, "channel": channel_name, "global": True}
-            case "channels_get":
-                # Handle request for available channels
-                username = getattr(ws, 'username', None)
-                if not username:
-                    return {"cmd": "error", "val": "User not authenticated"}
-                    
-                user_data = users.get_user(username)  # Ensure user exists
-                if not user_data:
-                    return {"cmd": "error", "val": "User not found"}
-                channels_list = channels.get_all_channels_for_roles(user_data.get("roles", []))
-                return {"cmd": "channels_get", "val": channels_list}
             case "messages_get":
                 # Handle request for channel messages
                 channel_name = message.get("channel")
@@ -251,6 +240,17 @@ def handle(ws, message, server_data=None):
                 # Get replies to the message
                 replies = channels.get_message_replies(channel_name, message_id, limit)
                 return {"cmd": "message_replies", "channel": channel_name, "message_id": message_id, "replies": replies}
+            case "channels_get":
+                # Handle request for available channels
+                username = getattr(ws, 'username', None)
+                if not username:
+                    return {"cmd": "error", "val": "User not authenticated"}
+                    
+                user_data = users.get_user(username)  # Ensure user exists
+                if not user_data:
+                    return {"cmd": "error", "val": "User not found"}
+                channels_list = channels.get_all_channels_for_roles(user_data.get("roles", []))
+                return {"cmd": "channels_get", "val": channels_list}
             case "users_list":
                 # Handle request for all users list
                 username = getattr(ws, 'username', None)
