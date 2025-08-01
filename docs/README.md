@@ -24,3 +24,8 @@ This documentation is for developers building custom clients for OriginChats. Ea
 
 - [Channel Object](data/channels.md)
 - [Message Object](data/messages.md)
+
+## Other
+
+- [Permissions](data/permissions.md)
+- [Roles](data/roles.md)
