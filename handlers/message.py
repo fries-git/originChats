@@ -107,7 +107,6 @@ def handle(ws, message, server_data=None):
                 user = getattr(ws, 'username', None)
                 if not user:
                     return {"cmd": "error", "val": "User not authenticated"}
-                
                 # Check rate limiting if enabled
                 if server_data and server_data.get("rate_limiter"):
                     is_allowed, reason, wait_time = server_data["rate_limiter"].is_allowed(user)
@@ -115,14 +114,25 @@ def handle(ws, message, server_data=None):
                         # Convert wait time to milliseconds and send rate_limit packet
                         wait_time_ms = int(wait_time * 1000)
                         return {"cmd": "rate_limit", "length": wait_time_ms}
-                
                 message_id = message.get("id")
                 channel_name = message.get("channel")
                 new_content = message.get("content")
-
                 if not message_id or not channel_name or not new_content:
                     return {"cmd": "error", "val": "Invalid message edit format"}
-
+                # Check if the message exists
+                msg_obj = channels.get_channel_message(channel_name, message_id)
+                if not msg_obj:
+                    return {"cmd": "error", "val": "Message not found or cannot be edited"}
+                user_roles = users.get_user_roles(user)
+                if not user_roles:
+                    return {"cmd": "error", "val": "User roles not found"}
+                if msg_obj.get("user") == user:
+                    # Editing own message
+                    if not channels.can_user_edit_own(channel_name, user_roles):
+                        return {"cmd": "error", "val": "You do not have permission to edit your own message in this channel"}
+                else:
+                    # Editing someone else's message (future: add edit permission if needed)
+                    return {"cmd": "error", "val": "You do not have permission to edit this message"}
                 if not channels.edit_channel_message(channel_name, message_id, new_content):
                     return {"cmd": "error", "val": "Failed to edit message"}
                 return {"cmd": "message_edit", "id": message_id, "content": new_content, "channel": channel_name, "global": True}
@@ -154,8 +164,13 @@ def handle(ws, message, server_data=None):
                 if not user_roles:
                     return {"cmd": "error", "val": "User roles not found"}
                 
-                if not message.get("user") == username:
-                    # If the user is not the original sender, check if they have permission to delete
+
+                if message.get("user") == username:
+                    # User is deleting their own message
+                    if not channels.can_user_delete_own(channel_name, user_roles):
+                        return {"cmd": "error", "val": "You do not have permission to delete your own message in this channel"}
+                else:
+                    # User is deleting someone else's message
                     if not channels.does_user_have_permission(channel_name, user_roles, "delete"):
                         return {"cmd": "error", "val": "You do not have permission to delete this message"}
 

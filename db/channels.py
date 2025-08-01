@@ -393,3 +393,41 @@ def purge_messages(channel_name, count):
         return True
     except FileNotFoundError:
         return False  # Channel not found
+
+def can_user_delete_own(channel_name, user_roles):
+    """
+    Check if a user with specific roles can delete their own message in a channel.
+    If the channel does not specify delete_own, all roles are allowed by default.
+    """
+    try:
+        with open(channels_index, 'r') as f:
+            channels_data = json.load(f)
+        for channel in channels_data:
+            if channel.get("name") == channel_name:
+                permissions = channel.get("permissions", {})
+                if "delete_own" not in permissions:
+                    return True  # Default: all roles can delete their own messages
+                allowed_roles = permissions.get("delete_own", [])
+                return any(role in allowed_roles for role in user_roles)
+    except FileNotFoundError:
+        return True  # Default to True if channel index not found
+    return True  # Default to True if channel not found
+
+def can_user_edit_own(channel_name, user_roles):
+    """
+    Check if a user with specific roles can edit their own message in a channel.
+    If the channel does not specify edit_own, all roles are allowed by default.
+    """
+    try:
+        with open(channels_index, 'r') as f:
+            channels_data = json.load(f)
+        for channel in channels_data:
+            if channel.get("name") == channel_name:
+                permissions = channel.get("permissions", {})
+                if "edit_own" not in permissions:
+                    return True  # Default: all roles can edit their own messages
+                allowed_roles = permissions.get("edit_own", [])
+                return any(role in allowed_roles for role in user_roles)
+    except FileNotFoundError:
+        return True  # Default to True if channel index not found
+    return True  # Default to True if channel not found
