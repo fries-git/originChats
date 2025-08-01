@@ -24,6 +24,6 @@ A channel object represents a chat channel. Example structure:
   - `delete_own`: (optional) Roles allowed to delete their own messages. If not present, all roles can delete their own messages by default.
   - `edit_own`: (optional) Roles allowed to edit their own messages. If not present, all roles can edit their own messages by default.
 
-**Permissions:** See [permissions documentation](permissions.md) for details on how permissions work.
+**Permissions:** See [permissions documentation](../permissions.md) for details on how permissions work.
 
 Returned by: [channels_get](../commands/channels_get.md)
