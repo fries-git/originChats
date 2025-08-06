@@ -252,8 +252,8 @@ def delete_channel(channel_name):
     try:
         with open(channels_index, 'r') as f:
             channels = json.load(f)
-        
-        new_channels = [channel for channel in channels if channel['name'] != channel_name]
+
+        new_channels = [channel for channel in channels if channel.get('name') != channel_name]
 
         if len(new_channels) == len(channels):
             return False  # Channel not found
@@ -286,7 +286,7 @@ def set_channel_permissions(channel_name, role, permission, allow=True):
             channels = json.load(f)
 
         for channel in channels:
-            if channel['name'] == channel_name:
+            if channel.get('name') == channel_name:
                 if permission not in channel['permissions']:
                     channel['permissions'][permission] = []
                 if role not in channel['permissions'][permission]:
@@ -322,7 +322,7 @@ def reorder_channel(channel_name, new_position):
             channels = json.load(f)
 
         for i, channel in enumerate(channels):
-            if channel['name'] == channel_name:
+            if channel.get('name') == channel_name:
                 # Remove the channel from its current position
                 channels.pop(i)
                 # Insert it at the new position

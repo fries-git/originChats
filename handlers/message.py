@@ -195,8 +195,8 @@ def handle(ws, message, server_data=None):
 
                 # Check if user can see this channel
                 allowed_channels = channels.get_all_channels_for_roles(user_data.get("roles", []))
-                
-                if channel_name not in [c["name"] for c in allowed_channels if c.get("type") == "text"]:
+
+                if channel_name not in [c.get("name") for c in allowed_channels if c.get("type") == "text"]:
                     return {"cmd": "error", "val": "Access denied to this channel"}
 
                 messages = channels.get_channel_messages(channel_name, limit)
@@ -219,8 +219,8 @@ def handle(ws, message, server_data=None):
 
                 # Check if user can see this channel
                 allowed_channels = channels.get_all_channels_for_roles(user_data.get("roles", []))
-                
-                if channel_name not in [c["name"] for c in allowed_channels if c.get("type") == "text"]:
+
+                if channel_name not in [c.get("name") for c in allowed_channels if c.get("type") == "text"]:
                     return {"cmd": "error", "val": "Access denied to this channel"}
 
                 # Get the specific message
@@ -248,8 +248,8 @@ def handle(ws, message, server_data=None):
 
                 # Check if user can see this channel
                 allowed_channels = channels.get_all_channels_for_roles(user_data.get("roles", []))
-                
-                if channel_name not in [c["name"] for c in allowed_channels if c.get("type") == "text"]:
+
+                if channel_name not in [c.get("name") for c in allowed_channels if c.get("type") == "text"]:
                     return {"cmd": "error", "val": "Access denied to this channel"}
 
                 # Get replies to the message

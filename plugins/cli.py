@@ -159,7 +159,7 @@ def on_new_message(ws, message_data, server_data=None):
                 channel_name = parts[2]
                 channel_info = channels.get_channel(channel_name)
                 if channel_info:
-                    channel_details = f"Channel '{channel_info['name']}' (Type: {channel_info['type']})"
+                    channel_details = f"Channel '{channel_info.get('name', 'no name')}' (Type: {channel_info.get('type', 'unknown')})"
                     if "permissions" in channel_info:
                         permissions = ", ".join([f"{role}: {', '.join(perms)}" for role, perms in channel_info["permissions"].items()])
                         channel_details += f" | Permissions: {permissions}"
