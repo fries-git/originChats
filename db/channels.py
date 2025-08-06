@@ -306,6 +306,28 @@ def set_channel_permissions(channel_name, role, permission, allow=True):
     except FileNotFoundError:
         return False  # Channels index not found
     
+def get_channel_permissions(channel_name):
+    """
+    Get permissions for a specific channel.
+
+    Args:
+        channel_name (str): The name of the channel.
+
+    Returns:
+        dict: A dictionary of permissions for the channel, or None if the channel does not exist.
+    """
+    try:
+        with open(channels_index, 'r') as f:
+            channels = json.load(f)
+
+        for channel in channels:
+            if channel.get('name') == channel_name:
+                return channel.get('permissions', {})
+        
+        return None  # Channel not found
+    except FileNotFoundError:
+        return None  # Channels index not found
+    
 def reorder_channel(channel_name, new_position):
     """
     Reorder a channel in the channels index.
