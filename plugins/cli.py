@@ -116,7 +116,7 @@ def on_new_message(ws, message_data, server_data=None):
             case "list_channels":
                 channels_list = channels.get_channels()
                 if channels_list:
-                    channel_info = [f"{channel['name']} (Type: {channel['type']})" for channel in channels_list]
+                    channel_info = [f"{channel.get('name', 'no name')} (Type: {channel.get('type', 'unknown')})" for channel in channels_list]
                     send_message_to_channel(channel, "Channels: " + ", ".join(channel_info), server_data)
                 else:
                     send_message_to_channel(channel, "No channels found.", server_data)

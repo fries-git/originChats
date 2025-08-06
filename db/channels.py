@@ -218,7 +218,7 @@ def create_channel(channel_name, channel_type):
         channels = []
 
     # Check if the channel already exists
-    if any(channel['name'] == channel_name for channel in channels):
+    if any(channel.get('name') == channel_name for channel in channels):
         return False  # Channel already exists
 
     new_channel = {
