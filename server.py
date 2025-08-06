@@ -75,9 +75,16 @@ class OriginChatsServer:
                     
                     # Handle authentication
                     if data.get("cmd") == "auth" and not getattr(websocket, "authenticated", False):
+                        # Create server data object for authentication
+                        auth_server_data = {
+                            "connected_clients": self.connected_clients,
+                            "config": self.config,
+                            "plugin_manager": self.plugin_manager,
+                            "rate_limiter": self.rate_limiter
+                        }
                         await handle_authentication(
                             websocket, data, self.config, 
-                            self.connected_clients, client_ip
+                            self.connected_clients, client_ip, auth_server_data
                         )
                         continue
 

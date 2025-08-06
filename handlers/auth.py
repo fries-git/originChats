@@ -6,7 +6,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from logger import Logger
 
-async def handle_authentication(websocket, data, config_data, connected_clients, client_ip):
+async def handle_authentication(websocket, data, config_data, connected_clients, client_ip, server_data=None):
     """Handle user authentication"""
     url = config_data["rotur"]["validate_url"]
     key = "originChats-" + config_data["rotur"]["validate_key"]
@@ -69,6 +69,15 @@ async def handle_authentication(websocket, data, config_data, connected_clients,
             "color": color
         }
     })
+    
+    # Trigger user_connect event for plugins
+    if server_data and "plugin_manager" in server_data:
+        server_data["plugin_manager"].trigger_event("user_connect", websocket, {
+            "username": websocket.username,
+            "roles": user.get("roles"),
+            "color": color,
+            "user": user
+        }, server_data)
     
     Logger.success(f"Client {client_ip} authenticated")
     return True
