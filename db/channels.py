@@ -141,7 +141,7 @@ def does_user_have_permission(channel_name, user_roles, permission_type):
     Args:
         channel_name (str): The name of the channel.
         user_roles (list): A list of roles assigned to the user.
-        permission_type (str): The type of permission to check (e.g., "view", "edit").
+        permission_type (str): The type of permission to check (e.g., "view", "edit_own").
 
     Returns:
         bool: True if the user has the required permission, False otherwise.
@@ -226,7 +226,6 @@ def create_channel(channel_name, channel_type):
         "type": channel_type,
         "permissions": {
             "view": ["owner"],
-            "edit": ["owner"],
             "send": ["owner"]
         }
     }
@@ -276,7 +275,7 @@ def set_channel_permissions(channel_name, role, permission, allow=True):
     Args:
         channel_name (str): The name of the channel.
         role (str): The role to set permissions for.
-        permission (str): The permission to set (e.g., "view", "edit", "send").
+        permission (str): The permission to set (e.g., "view", "edit_own", "send").
 
     Returns:
         bool: True if permissions were set successfully, False if the channel does not exist.
