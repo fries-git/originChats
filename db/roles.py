@@ -89,6 +89,34 @@ def update_role(role_name, role_data):
 
     return True
 
+def update_role_key(role_name, key, value):
+    """
+    Update a specific key in a role's data.
+    
+    Args:
+        role_name (str): The name of the role to update.
+        key (str): The key to update.
+        value: The new value for the key.
+    
+    Returns:
+        bool: True if the role was updated successfully, False if it does not exist.
+    """
+    try:
+        with open(roles_index, "r") as f:
+            roles = json.load(f)
+    except FileNotFoundError:
+        return False  # Roles database does not exist
+
+    if role_name not in roles:
+        return False  # Role does not exist
+
+    roles[role_name][key] = value
+
+    with open(roles_index, "w") as f:
+        json.dump(roles, f, indent=4)
+
+    return True
+
 def delete_role(role_name):
     """
     Delete a role from the roles database.

@@ -5,7 +5,7 @@ required_permission = ["owner", "admin"]
 
 
 import os, json
-from db import channels, users
+from db import channels, users, roles
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from logger import Logger
@@ -204,7 +204,7 @@ def on_new_message(ws, message_data, server_data=None):
                     send_message_to_channel(channel, "Usage: !server create_role <role_name>", server_data)
                     return
                 role_name = parts[2]
-                if users.create_role(role_name):
+                if roles.add_role(role_name):
                     send_message_to_channel(channel, f"Role '{role_name}' created successfully.", server_data)
                 else:
                     send_message_to_channel(channel, f"Failed to create role '{role_name}'. It may already exist.", server_data)
@@ -213,7 +213,7 @@ def on_new_message(ws, message_data, server_data=None):
                     send_message_to_channel(channel, "Usage: !server delete_role <role_name>", server_data)
                     return
                 role_name = parts[2]
-                if users.delete_role(role_name):
+                if roles.delete_role(role_name):
                     send_message_to_channel(channel, f"Role '{role_name}' deleted successfully.", server_data)
                 else:
                     send_message_to_channel(channel, f"Failed to delete role '{role_name}'. It may not exist.", server_data)
@@ -223,7 +223,7 @@ def on_new_message(ws, message_data, server_data=None):
                     return
                 username_to_give = parts[2]
                 role_name = parts[3]
-                if users.give_role(username_to_give, role_name):
+                if roles.give_role(username_to_give, role_name):
                     send_message_to_channel(channel, f"Role '{role_name}' given to user '{username_to_give}' successfully.", server_data)
                 else:
                     send_message_to_channel(channel, f"Failed to give role '{role_name}' to user '{username_to_give}'. User may not exist or role may not be valid.", server_data)
@@ -238,7 +238,7 @@ def on_new_message(ws, message_data, server_data=None):
                 else:
                     send_message_to_channel(channel, f"Failed to remove role '{role_name}' from user '{username_to_remove}'. User may not exist or role may not be valid.", server_data)
             case "list_roles":
-                roles = users.get_roles()
+                roles = roles.get_all_roles()
                 if roles:
                     role_info = [f"{role_name} (Color: {role_data.get('color', 'default')})" for role_name, role_data in roles.items()]
                     send_message_to_channel(channel, "Roles: " + ", ".join(role_info), server_data)
@@ -250,10 +250,10 @@ def on_new_message(ws, message_data, server_data=None):
                     return
                 role_name = parts[2]
                 new_color = parts[3]
-                if users.update_role(role_name, {"color": new_color}):
-                    send_message_to_channel(channel, f"Role '{role_name}' updated successfully with new color '{new_color}'.", server_data)
+                if roles.update_role_key(role_name, "color", new_color):
+                    send_message_to_channel(channel, f"Role '{role_name}' color updated to '{new_color}'.", server_data)
                 else:
-                    send_message_to_channel(channel, f"Failed to update role '{role_name}'. It may not exist.", server_data)
+                    send_message_to_channel(channel, f"Failed to update color for role '{role_name}'. It may not exist.", server_data)
             case "message_purge":
                 if len(parts) < 3 or not parts[2].isdigit():
                     send_message_to_channel(channel, "Usage: !server message_purge <number>", server_data)
