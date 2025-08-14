@@ -47,6 +47,50 @@ async def broadcast_to_all(connected_clients, message):
     
     return disconnected
 
+async def broadcast_to_channel(connected_clients, message, channel_name):
+    """Broadcast a message to all connected clients who have access to the specified channel"""
+    from db import users, channels
+    
+    disconnected = set()
+    sent_count = 0
+    
+    # Create a copy of the set to avoid "Set changed size during iteration" error
+    clients_copy = connected_clients.copy()
+    
+    for ws in clients_copy:
+        # Only send to authenticated users
+        if not getattr(ws, 'authenticated', False):
+            continue
+            
+        username = getattr(ws, 'username', None)
+        if not username:
+            continue
+            
+        # Get user roles
+        user_data = users.get_user(username)
+        if not user_data:
+            continue
+            
+        user_roles = user_data.get("roles", [])
+        
+        # Check if user has view permission for this channel
+        if channels.does_user_have_permission(channel_name, user_roles, "view"):
+            success = await send_to_client(ws, message)
+            if not success:
+                disconnected.add(ws)
+            else:
+                sent_count += 1
+    
+    # Clean up disconnected clients
+    for ws in disconnected:
+        connected_clients.discard(ws)
+    
+    if disconnected:
+        Logger.delete(f"Removed {len(disconnected)} disconnected clients")
+    
+    Logger.info(f"Broadcast message to {sent_count} clients in channel '{channel_name}'")
+    return disconnected
+
 async def disconnect_user(connected_clients, username, reason="User disconnected"):
     """Disconnect a specific user by username"""
     disconnected = []

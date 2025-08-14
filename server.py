@@ -1,5 +1,5 @@
 import asyncio, websockets, json, os
-from handlers.websocket_utils import send_to_client, heartbeat, broadcast_to_all
+from handlers.websocket_utils import send_to_client, heartbeat, broadcast_to_all, broadcast_to_channel
 from handlers.auth import handle_authentication
 from handlers import message as message_handler
 from handlers.rate_limiter import RateLimiter
@@ -108,8 +108,13 @@ class OriginChatsServer:
                         continue
                     
                     if response.get("global", False):
-                        # Broadcast to all clients if global flag is set
-                        await broadcast_to_all(self.connected_clients, response)
+                        # Check if this is a channel-specific message
+                        if response.get("channel"):
+                            # Broadcast only to users who have access to the channel
+                            await broadcast_to_channel(self.connected_clients, response, response["channel"])
+                        else:
+                            # Broadcast to all clients if no channel specified
+                            await broadcast_to_all(self.connected_clients, response)
                         continue
                     
                     if response:
