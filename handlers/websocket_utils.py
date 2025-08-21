@@ -88,7 +88,6 @@ async def broadcast_to_channel(connected_clients, message, channel_name):
     if disconnected:
         Logger.delete(f"Removed {len(disconnected)} disconnected clients")
     
-    Logger.info(f"Broadcast message to {sent_count} clients in channel '{channel_name}'")
     return disconnected
 
 async def disconnect_user(connected_clients, username, reason="User disconnected"):

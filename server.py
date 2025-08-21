@@ -160,6 +160,15 @@ class OriginChatsServer:
         
         Logger.info(f"Starting WebSocket server on {host}:{port}")
         
+        # Trigger server_start event for plugins
+        server_data = {
+            "connected_clients": self.connected_clients,
+            "config": self.config,
+            "plugin_manager": self.plugin_manager,
+            "rate_limiter": self.rate_limiter
+        }
+        self.plugin_manager.trigger_event("server_start", None, {}, server_data)
+        
         try:
             async with websockets.serve(self.handle_client, host, port, ping_interval=None):
                 Logger.success(f"WebSocket server running at ws://{host}:{port}")

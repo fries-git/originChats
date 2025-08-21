@@ -108,13 +108,36 @@ class PluginManager:
                 
                 # Check handler signature to determine how to call it
                 sig = inspect.signature(handler)
-                if len(sig.parameters) == 2:
-                    handler(ws, message_data)
-                elif len(sig.parameters) == 3:
-                    handler(ws, message_data, server_data)
+                
+                # Check if handler is async
+                if inspect.iscoroutinefunction(handler):
+                    # For async handlers, we need to schedule them
+                    import asyncio
+                    try:
+                        loop = asyncio.get_event_loop()
+                        if len(sig.parameters) == 2:
+                            asyncio.create_task(handler(ws, message_data))
+                        elif len(sig.parameters) == 3:
+                            asyncio.create_task(handler(ws, message_data, server_data))
+                        else:
+                            asyncio.create_task(handler(ws, message_data))
+                    except RuntimeError:
+                        # No event loop running, create one
+                        if len(sig.parameters) == 2:
+                            asyncio.run(handler(ws, message_data))
+                        elif len(sig.parameters) == 3:
+                            asyncio.run(handler(ws, message_data, server_data))
+                        else:
+                            asyncio.run(handler(ws, message_data))
                 else:
-                    # Fallback: try with ws and message_data
-                    handler(ws, message_data)
+                    # Synchronous handler
+                    if len(sig.parameters) == 2:
+                        handler(ws, message_data)
+                    elif len(sig.parameters) == 3:
+                        handler(ws, message_data, server_data)
+                    else:
+                        # Fallback: try with ws and message_data
+                        handler(ws, message_data)
                     
             except Exception as e:
                 Logger.error(f"Error in plugin '{handler_info['plugin_name']}' handler: {str(e)}")
