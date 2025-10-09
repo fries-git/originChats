@@ -43,6 +43,9 @@ class UserCommands:
     
     @staticmethod
     def ban(handler, args):
+        """
+        Ban a user: ban <username>
+        """
         if len(args) < 1:
             return handler.error("Usage: ban <username>")
         
@@ -62,6 +65,9 @@ class UserCommands:
     
     @staticmethod
     def unban(handler, args):
+        """
+        Unban a user: unban <username>
+        """
         if len(args) < 1:
             return handler.error("Usage: unban <username>")
         
@@ -73,6 +79,9 @@ class UserCommands:
     
     @staticmethod
     def banned(handler, args):
+        """
+        List all banned users: banned
+        """
         banned_users = users.get_banned_users()
         if banned_users:
             handler.reply("🚫 Banned users:\n" + "\n".join(f"  • {user}" for user in banned_users))
@@ -81,6 +90,9 @@ class UserCommands:
     
     @staticmethod
     def users_list(handler, args):
+        """
+        List all users: users
+        """
         user_list = users.get_users()
         if user_list:
             lines = ["👥 Users:"]
@@ -96,6 +108,9 @@ class ChannelCommands:
     
     @staticmethod
     def channels_list(handler, args):
+        """
+        List all channels: channels
+        """
         channel_list = channels.get_channels()
         if channel_list:
             lines = ["📋 Channels:"]
@@ -108,6 +123,10 @@ class ChannelCommands:
     
     @staticmethod
     def create_channel(handler, args):
+        """
+        Create a channel: create <name> <type>
+        Types: text, separator
+        """
         if len(args) < 2:
             return handler.error("Usage: create <name> <type>\nTypes: text, separator")
         
@@ -122,6 +141,9 @@ class ChannelCommands:
     
     @staticmethod
     def delete_channel(handler, args):
+        """
+        Delete a channel: delete <name>
+        """
         if len(args) < 1:
             return handler.error("Usage: delete <name>")
         
@@ -133,6 +155,9 @@ class ChannelCommands:
     
     @staticmethod
     def channel_info(handler, args):
+        """
+        Get channel info: info <name>
+        """
         if len(args) < 1:
             return handler.error("Usage: info <name>")
         
@@ -156,6 +181,9 @@ class RoleCommands:
     
     @staticmethod
     def roles_list(handler, args):
+        """
+        List all roles: roles
+        """
         all_roles = roles.get_all_roles()
         if all_roles:
             lines = ["🎭 Roles:"]
@@ -168,6 +196,9 @@ class RoleCommands:
     
     @staticmethod
     def create_role(handler, args):
+        """
+        Create a role: createrole <name>
+        """
         if len(args) < 1:
             return handler.error("Usage: createrole <name>")
         
@@ -179,6 +210,9 @@ class RoleCommands:
     
     @staticmethod
     def delete_role(handler, args):
+        """
+        Delete a role: deleterole <name>
+        """
         if len(args) < 1:
             return handler.error("Usage: deleterole <name>")
         
@@ -190,6 +224,9 @@ class RoleCommands:
     
     @staticmethod
     def give_role(handler, args):
+        """
+        Give role to user: give <username> <role>
+        """
         if len(args) < 2:
             return handler.error("Usage: give <username> <role>")
         
@@ -201,6 +238,9 @@ class RoleCommands:
     
     @staticmethod
     def remove_role(handler, args):
+        """
+        Remove role from user: remove <username> <role>
+        """
         if len(args) < 2:
             return handler.error("Usage: remove <username> <role>")
         
@@ -212,6 +252,9 @@ class RoleCommands:
     
     @staticmethod
     def rolecolor(handler, args):
+        """
+        Update role color: rolecolor <role> <color>
+        """
         if len(args) < 2:
             return handler.error("Usage: rolecolor <role> <color>")
         
@@ -226,6 +269,9 @@ class ModerationCommands:
     
     @staticmethod
     def purge(handler, args):
+        """
+        Purge messages: purge <count>
+        """
         if len(args) < 1 or not args[0].isdigit():
             return handler.error("Usage: purge <count>")
         
