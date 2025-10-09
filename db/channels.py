@@ -5,6 +5,16 @@ _MODULE_DIR = os.path.dirname(os.path.abspath(__file__))
 channels_db_dir = os.path.join(_MODULE_DIR, "channels")
 channels_index = os.path.join(_MODULE_DIR, "channels.json")
 
+def get_channel(channel_name):
+    """
+    Get channel data by channel name.
+    """
+    data = get_channels()
+    for channel in data:
+        if channel.get("name") == channel_name:
+            return channel
+    return None
+
 def get_channel_messages(channel_name, limit=100):
     """
     Retrieve messages from a specific channel.

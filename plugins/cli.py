@@ -1,34 +1,297 @@
-# this plugin will be accessible to any user with any of the following roles
-# "owner" is the highest level of access, allowing full control over the server
-# "admin" role is also allowed for administrative commands
-required_permission = ["owner", "admin"]
-
-
-import os, json
-from db import channels, users, roles
+import os
 import sys
+import asyncio
+import time
+import uuid
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from db import channels, users, roles
 from logger import Logger
 
+REQUIRED_PERMISSIONS = ["owner", "admin"]
+COMMAND_PREFIX = "!"
+
+
 def getInfo():
-    """Get information about the plugin"""
-    info = {
-       "name": "CLI Plugin",
-        "description": "A command line interface for OriginChats that lets you manage your server, channels, and users from the chat with commands.",
-        "handles": [
-            "new_message"
-        ]
+    return {
+        "name": "CLI Plugin",
+        "description": "Manage your server, channels, and users through chat commands.",
+        "handles": ["new_message"]
     }
-    return info
+
+
+class CommandHandler:
+    
+    def __init__(self, ws, channel, server_data):
+        self.ws = ws
+        self.channel = channel
+        self.server_data = server_data
+        self.username = getattr(ws, 'username', None)
+        
+    def reply(self, message):
+        send_message_to_channel(self.channel, message, self.server_data)
+    
+    def error(self, message):
+        self.reply(f"❌ Error: {message}")
+    
+    def success(self, message):
+        self.reply(f"✅ {message}")
+
+
+class UserCommands:
+    
+    @staticmethod
+    def ban(handler, args):
+        if len(args) < 1:
+            return handler.error("Usage: ban <username>")
+        
+        username = args[0]
+        if users.ban_user(username):
+            if handler.server_data and "connected_clients" in handler.server_data:
+                from handlers.websocket_utils import disconnect_user
+                loop = asyncio.get_event_loop()
+                loop.create_task(disconnect_user(
+                    handler.server_data["connected_clients"],
+                    username,
+                    "You have been banned from this server"
+                ))
+            handler.success(f"Banned user '{username}'")
+        else:
+            handler.error(f"Failed to ban user '{username}'")
+    
+    @staticmethod
+    def unban(handler, args):
+        if len(args) < 1:
+            return handler.error("Usage: unban <username>")
+        
+        username = args[0]
+        if users.unban_user(username):
+            handler.success(f"Unbanned user '{username}'")
+        else:
+            handler.error(f"Failed to unban '{username}'")
+    
+    @staticmethod
+    def banned(handler, args):
+        banned_users = users.get_banned_users()
+        if banned_users:
+            handler.reply("🚫 Banned users:\n" + "\n".join(f"  • {user}" for user in banned_users))
+        else:
+            handler.reply("No users are currently banned")
+    
+    @staticmethod
+    def users_list(handler, args):
+        user_list = users.get_users()
+        if user_list:
+            lines = ["👥 Users:"]
+            for user in user_list:
+                roles_str = ", ".join(user.get('roles', []))
+                lines.append(f"  • {user['username']} ({roles_str})")
+            handler.reply("\n".join(lines))
+        else:
+            handler.reply("No users found")
+
+
+class ChannelCommands:
+    
+    @staticmethod
+    def channels_list(handler, args):
+        channel_list = channels.get_channels()
+        if channel_list:
+            lines = ["📋 Channels:"]
+            for ch in channel_list:
+                ch_type = ch.get('type', 'unknown')
+                lines.append(f"  • {ch.get('name', 'unnamed')} ({ch_type})")
+            handler.reply("\n".join(lines))
+        else:
+            handler.reply("No channels found")
+    
+    @staticmethod
+    def create_channel(handler, args):
+        if len(args) < 2:
+            return handler.error("Usage: create <name> <type>\nTypes: text, separator")
+        
+        name, ch_type = args[0], args[1].lower()
+        if ch_type not in ["text", "separator"]:
+            return handler.error("Invalid type. Use 'text' or 'separator'")
+        
+        if channels.create_channel(name, ch_type):
+            handler.success(f"Created channel '{name}' ({ch_type})")
+        else:
+            handler.error(f"Failed to create channel (may already exist)")
+    
+    @staticmethod
+    def delete_channel(handler, args):
+        if len(args) < 1:
+            return handler.error("Usage: delete <name>")
+        
+        name = args[0]
+        if channels.delete_channel(name):
+            handler.success(f"Deleted channel '{name}'")
+        else:
+            handler.error(f"Failed to delete channel '{name}'")
+    
+    @staticmethod
+    def channel_info(handler, args):
+        if len(args) < 1:
+            return handler.error("Usage: info <name>")
+        
+        name = args[0]
+        info = channels.get_channel(name)
+        if info:
+            lines = [
+                f"📌 Channel: {info.get('name', 'unnamed')}",
+                f"   Type: {info.get('type', 'unknown')}"
+            ]
+            if "permissions" in info:
+                lines.append("   Permissions:")
+                for role, perms in info["permissions"].items():
+                    lines.append(f"     • {role}: {', '.join(perms)}")
+            handler.reply("\n".join(lines))
+        else:
+            handler.error(f"Channel '{name}' not found")
+
+
+class RoleCommands:
+    
+    @staticmethod
+    def roles_list(handler, args):
+        all_roles = roles.get_all_roles()
+        if all_roles:
+            lines = ["🎭 Roles:"]
+            for role_name, role_data in all_roles.items():
+                color = role_data.get('color', 'default')
+                lines.append(f"  • {role_name} (color: {color})")
+            handler.reply("\n".join(lines))
+        else:
+            handler.reply("No roles found")
+    
+    @staticmethod
+    def create_role(handler, args):
+        if len(args) < 1:
+            return handler.error("Usage: createrole <name>")
+        
+        role_name = args[0]
+        if roles.add_role(role_name, {}):
+            handler.success(f"Created role '{role_name}'")
+        else:
+            handler.error(f"Failed to create role (may already exist)")
+    
+    @staticmethod
+    def delete_role(handler, args):
+        if len(args) < 1:
+            return handler.error("Usage: deleterole <name>")
+        
+        role_name = args[0]
+        if roles.delete_role(role_name):
+            handler.success(f"Deleted role '{role_name}'")
+        else:
+            handler.error(f"Failed to delete role '{role_name}'")
+    
+    @staticmethod
+    def give_role(handler, args):
+        if len(args) < 2:
+            return handler.error("Usage: give <username> <role>")
+        
+        username, role_name = args[0], args[1]
+        if users.give_role(username, role_name):
+            handler.success(f"Gave role '{role_name}' to '{username}'")
+        else:
+            handler.error(f"Failed to give role")
+    
+    @staticmethod
+    def remove_role(handler, args):
+        if len(args) < 2:
+            return handler.error("Usage: remove <username> <role>")
+        
+        username, role_name = args[0], args[1]
+        if users.remove_role(username, role_name):
+            handler.success(f"Removed role '{role_name}' from '{username}'")
+        else:
+            handler.error(f"Failed to remove role")
+    
+    @staticmethod
+    def rolecolor(handler, args):
+        if len(args) < 2:
+            return handler.error("Usage: rolecolor <role> <color>")
+        
+        role_name, color = args[0], args[1]
+        if roles.update_role_key(role_name, "color", color):
+            handler.success(f"Updated color for role '{role_name}'")
+        else:
+            handler.error(f"Failed to update role color")
+
+
+class ModerationCommands:
+    
+    @staticmethod
+    def purge(handler, args):
+        if len(args) < 1 or not args[0].isdigit():
+            return handler.error("Usage: purge <count>")
+        
+        count = int(args[0])
+        if count <= 0:
+            return handler.error("Count must be greater than 0")
+        
+        if channels.purge_messages(handler.channel, count):
+            handler.success(f"Purged {count} messages")
+        else:
+            handler.error("Failed to purge messages")
+
+
+COMMANDS = {
+    "ban": UserCommands.ban,
+    "unban": UserCommands.unban,
+    "banned": UserCommands.banned,
+    "users": UserCommands.users_list,
+    "channels": ChannelCommands.channels_list,
+    "create": ChannelCommands.create_channel,
+    "delete": ChannelCommands.delete_channel,
+    "info": ChannelCommands.channel_info,
+    "roles": RoleCommands.roles_list,
+    "createrole": RoleCommands.create_role,
+    "deleterole": RoleCommands.delete_role,
+    "give": RoleCommands.give_role,
+    "remove": RoleCommands.remove_role,
+    "rolecolor": RoleCommands.rolecolor,
+    "purge": ModerationCommands.purge,
+}
+
+
+def show_help(handler, args):
+    if args and args[0] in COMMANDS:
+        cmd = args[0]
+        func = COMMANDS[cmd]
+        doc = func.__doc__ or "No help available"
+        handler.reply(f"📖 {doc}")
+    else:
+        lines = ["📖 Available Commands:", ""]
+        
+        categories = {
+            "User Management": ["ban", "unban", "banned", "users"],
+            "Channel Management": ["channels", "create", "delete", "info"],
+            "Role Management": ["roles", "createrole", "deleterole", "give", "remove", "rolecolor"],
+            "Moderation": ["purge"]
+        }
+        
+        for category, cmds in categories.items():
+            lines.append(f"**{category}**")
+            for cmd in cmds:
+                if cmd in COMMANDS:
+                    lines.append(f"  !{cmd}")
+            lines.append("")
+        
+        lines.append("💡 Use !help <command> for detailed help")
+        handler.reply("\n".join(lines))
+
+
+COMMANDS["help"] = show_help
+
 
 def send_message_to_channel(channel, content, server_data):
-    """Send a message to a channel through the server's broadcast system"""
-    import asyncio
-    import time
-    import uuid
+    from handlers.websocket_utils import broadcast_to_all
     
-    # Create a message object similar to how regular messages are created
-    out_msg = {
+    message = {
         "user": "OriginChats",
         "content": content.strip(),
         "timestamp": time.time(),
@@ -37,379 +300,49 @@ def send_message_to_channel(channel, content, server_data):
         "id": str(uuid.uuid4())
     }
     
-    # Save to channel
-    channels.save_channel_message(channel, out_msg)
+    channels.save_channel_message(channel, message)
     
-    # Broadcast the message if we have server data
     if server_data and "connected_clients" in server_data:
-        message = {"cmd": "message_new", "message": out_msg, "channel": channel, "global": True}
-        # We need to schedule this to run in the event loop
-        from handlers.websocket_utils import broadcast_to_all
+        broadcast_msg = {
+            "cmd": "message_new",
+            "message": message,
+            "channel": channel,
+            "global": True
+        }
         loop = asyncio.get_event_loop()
-        loop.create_task(broadcast_to_all(server_data["connected_clients"], message))
+        loop.create_task(broadcast_to_all(server_data["connected_clients"], broadcast_msg))
+
 
 def on_new_message(ws, message_data, server_data=None):
-    """Handle new chat messages"""
-    
-    if not ws or not hasattr(ws, 'authenticated') or not ws.authenticated:
-        Logger.warning(f"Authentication check failed: ws={ws}, authenticated={getattr(ws, 'authenticated', False)}")
+    if not ws or not getattr(ws, 'authenticated', False):
+        Logger.warning("Authentication check failed")
         return
-
+    
     username = getattr(ws, 'username', None)
     user_roles = users.get_user_roles(username)
     
-    if not user_roles:
-        Logger.warning("No user roles found")
+    if not user_roles or not any(role in user_roles for role in REQUIRED_PERMISSIONS):
         return
-
-    if not any(role in user_roles for role in required_permission):
-        Logger.warning("User lacks required permissions")
-        return
-
-    content = message_data.get("content", "").strip()
-    channel = message_data.get("channel", "general")
-    parts = content.split(" ")
     
-    if content.startswith("!server "):
-        match parts[1]:
-            case "ban":
-                if len(parts) < 3:
-                    send_message_to_channel(channel, "Usage: !server ban <username>", server_data)
-                    return
-                username_to_ban = parts[2]
-                if users.ban_user(username_to_ban):
-                    # Disconnect the banned user if they're online
-                    if server_data and "connected_clients" in server_data:
-                        import asyncio
-                        from handlers.websocket_utils import disconnect_user
-                        loop = asyncio.get_event_loop()
-                        loop.create_task(disconnect_user(
-                            server_data["connected_clients"], 
-                            username_to_ban, 
-                            "You have been banned from this server"
-                        ))
-                    send_message_to_channel(channel, f"User {username_to_ban} has been banned.", server_data)
-                else:
-                    send_message_to_channel(channel, f"Failed to ban user {username_to_ban}.", server_data)
-            case "unban":
-                if len(parts) < 3:
-                    send_message_to_channel(channel, "Usage: !server unban <username>", server_data)
-                    return
-                username = parts[2]
-                if users.unban_user(username):
-                    send_message_to_channel(channel, f"User {username} has been unbanned.", server_data)
-                else:
-                    send_message_to_channel(channel, f"Failed to unban user {username}.", server_data)
-            case "list_banned":
-                banned_users = users.get_banned_users()
-                if banned_users:
-                    send_message_to_channel(channel, "Banned users: " + ", ".join(banned_users), server_data)
-                else:
-                    send_message_to_channel(channel, "No users are currently banned.", server_data)
-            case "list_users":
-                user_list = users.get_users()
-                if user_list:
-                    user_info = [f"{user['username']} (Roles: {', '.join(user['roles'])})" for user in user_list]
-                    send_message_to_channel(channel, "Users: " + ", ".join(user_info), server_data)
-                else:
-                    send_message_to_channel(channel, "No users found.", server_data)
-            case "list_channels":
-                channels_list = channels.get_channels()
-                if channels_list:
-                    channel_info = [f"{channel.get('name', 'no name')} (Type: {channel.get('type', 'unknown')})" for channel in channels_list]
-                    send_message_to_channel(channel, "Channels: " + ", ".join(channel_info), server_data)
-                else:
-                    send_message_to_channel(channel, "No channels found.", server_data)
-            case "create_channel":
-                if len(parts) < 4:
-                    send_message_to_channel(channel, "Usage: !server create_channel <channel_name> <channel_type>", server_data)
-                    return
-                channel_name = parts[2]
-                channel_type = parts[3].lower()
-                if channel_type not in ["text", "separator"]:
-                    send_message_to_channel(channel, "Invalid channel type. Use 'text' or 'separator'.", server_data)
-                    return
-                if channels.create_channel(channel_name, channel_type):
-                    send_message_to_channel(channel, f"Channel '{channel_name}' of type '{channel_type}' created successfully.", server_data)
-                else:
-                    send_message_to_channel(channel, f"Failed to create channel '{channel_name}'. It may already exist.", server_data)
-            case "delete_channel":
-                if len(parts) < 3:
-                    send_message_to_channel(channel, "Usage: !server delete_channel <channel_name>", server_data)
-                    return
-                channel_name = parts[2]
-                if channels.delete_channel(channel_name):
-                    send_message_to_channel(channel, f"Channel '{channel_name}' deleted successfully.", server_data)
-                else:
-                    send_message_to_channel(channel, f"Failed to delete channel '{channel_name}'. It may not exist.", server_data)
-            case "reorder_channel":
-                if len(parts) < 4:
-                    send_message_to_channel(channel, "Usage: !server reorder_channel <channel_name> <new_position>", server_data)
-                    return
-                channel_name = parts[2]
-                new_position = parts[3]
-                if channels.reorder_channel(channel_name, new_position):
-                    send_message_to_channel(channel, f"Channel '{channel_name}' reordered to position '{new_position}' successfully.", server_data)
-                else:
-                    send_message_to_channel(channel, f"Failed to reorder channel '{channel_name}'. It may not exist or the position is invalid.", server_data)
-            case "get_channel":
-                if len(parts) < 3:
-                    send_message_to_channel(channel, "Usage: !server get_channel <channel_name>", server_data)
-                    return
-                channel_name = parts[2]
-                channel_info = channels.get_channel(channel_name)
-                if channel_info:
-                    channel_details = f"Channel '{channel_info.get('name', 'no name')}' (Type: {channel_info.get('type', 'unknown')})"
-                    if "permissions" in channel_info:
-                        permissions = ", ".join([f"{role}: {', '.join(perms)}" for role, perms in channel_info["permissions"].items()])
-                        channel_details += f" | Permissions: {permissions}"
-                    send_message_to_channel(channel, channel_details, server_data)
-                else:
-                    send_message_to_channel(channel, f"Channel '{channel_name}' not found.", server_data)
-            case "add_channel_permission":
-                if len(parts) < 4:
-                    send_message_to_channel(channel, "Usage: !server add_channel_permissions <channel_name> <role> [permission]", server_data)
-                    return
-                channel_name = parts[2]
-                role = parts[3]
-                permission = parts[4] if len(parts) > 4 else None
-                if channels.set_channel_permissions(channel_name, role, permission, True):
-                    send_message_to_channel(channel, f"Permissions for role '{role}' on channel '{channel_name}' updated successfully.", server_data)
-                else:
-                    send_message_to_channel(channel, f"Failed to set permissions for role '{role}' on channel '{channel_name}'. Channel may not exist or role may not be valid.", server_data)
-            case "rem_channel_permission":
-                if len(parts) < 4:
-                    send_message_to_channel(channel, "Usage: !server rem_channel_permissions <channel_name> <role> [permission]", server_data)
-                    return
-                channel_name = parts[2]
-                role = parts[3]
-                permission = parts[4] if len(parts) > 4 else None
-                if channels.set_channel_permission(channel_name, role, permission, False):
-                    send_message_to_channel(channel, f"Permissions for role '{role}' on channel '{channel_name}' removed successfully.", server_data)
-                else:
-                    send_message_to_channel(channel, f"Failed to remove permissions for role '{role}' on channel '{channel_name}'. Channel may not exist or role may not be valid.", server_data)
-            case "get_channel_permissions":
-                if len(parts) < 3:
-                    send_message_to_channel(channel, "Usage: !server get_channel_permissions <channel_name>", server_data)
-                    return
-                channel_name = parts[2]
-                permissions = channels.get_channel_permissions(channel_name)
-                if permissions:
-                    perm_info = [f"{role}: {', '.join(perms)}" for role, perms in permissions.items()]
-                    send_message_to_channel(channel, f"Permissions for channel '{channel_name}': " + ", ".join(perm_info), server_data)
-                else:
-                    send_message_to_channel(channel, f"Failed to get permissions for channel '{channel_name}'. It may not exist.", server_data)
-            case "create_role":
-                if len(parts) < 3:
-                    send_message_to_channel(channel, "Usage: !server create_role <role_name>", server_data)
-                    return
-                role_name = parts[2]
-                if roles.add_role(role_name):
-                    send_message_to_channel(channel, f"Role '{role_name}' created successfully.", server_data)
-                else:
-                    send_message_to_channel(channel, f"Failed to create role '{role_name}'. It may already exist.", server_data)
-            case "delete_role":
-                if len(parts) < 3:
-                    send_message_to_channel(channel, "Usage: !server delete_role <role_name>", server_data)
-                    return
-                role_name = parts[2]
-                if roles.delete_role(role_name):
-                    send_message_to_channel(channel, f"Role '{role_name}' deleted successfully.", server_data)
-                else:
-                    send_message_to_channel(channel, f"Failed to delete role '{role_name}'. It may not exist.", server_data)
-            case "give_role":
-                if len(parts) < 4:
-                    send_message_to_channel(channel, "Usage: !server give_role <username> <role_name>", server_data)
-                    return
-                username_to_give = parts[2]
-                role_name = parts[3]
-                if roles.give_role(username_to_give, role_name):
-                    send_message_to_channel(channel, f"Role '{role_name}' given to user '{username_to_give}' successfully.", server_data)
-                else:
-                    send_message_to_channel(channel, f"Failed to give role '{role_name}' to user '{username_to_give}'. User may not exist or role may not be valid.", server_data)
-            case "remove_role":
-                if len(parts) < 4:
-                    send_message_to_channel(channel, "Usage: !server remove_role <username> <role_name>", server_data)
-                    return
-                username_to_remove = parts[2]
-                role_name = parts[3]
-                if users.remove_role(username_to_remove, role_name):
-                    send_message_to_channel(channel, f"Role '{role_name}' removed from user '{username_to_remove}' successfully.", server_data)
-                else:
-                    send_message_to_channel(channel, f"Failed to remove role '{role_name}' from user '{username_to_remove}'. User may not exist or role may not be valid.", server_data)
-            case "list_roles":
-                roles = roles.get_all_roles()
-                if roles:
-                    role_info = [f"{role_name} (Color: {role_data.get('color', 'default')})" for role_name, role_data in roles.items()]
-                    send_message_to_channel(channel, "Roles: " + ", ".join(role_info), server_data)
-                else:
-                    send_message_to_channel(channel, "No roles found.", server_data)
-            case "update_role_color":
-                if len(parts) < 4:
-                    send_message_to_channel(channel, "Usage: !server update_role_color <role_name> <new_color>", server_data)
-                    return
-                role_name = parts[2]
-                new_color = parts[3]
-                if roles.update_role_key(role_name, "color", new_color):
-                    send_message_to_channel(channel, f"Role '{role_name}' color updated to '{new_color}'.", server_data)
-                else:
-                    send_message_to_channel(channel, f"Failed to update color for role '{role_name}'. It may not exist.", server_data)
-            case "message_purge":
-                if len(parts) < 3 or not parts[2].isdigit():
-                    send_message_to_channel(channel, "Usage: !server message_purge <number>", server_data)
-                    return
-                number = int(parts[2])
-                if number <= 0:
-                    send_message_to_channel(channel, "Number must be greater than 0.", server_data)
-                    return
-                if channels.purge_messages(channel, number):
-                    send_message_to_channel(channel, f"Purged the last {number} messages from channel '{channel}'.", server_data)
-                else:
-                    send_message_to_channel(channel, f"Failed to purge messages from channel '{channel}'.", server_data)
-            case "rate_limit_status":
-                if len(parts) < 3:
-                    # Check own rate limit status
-                    username_to_check = username
-                else:
-                    # Check another user's status (admin only)
-                    username_to_check = parts[2]
-                
-                # Send WebSocket message to get rate limit status
-                import asyncio
-                import json
-                from handlers.websocket_utils import send_to_client
-                
-                # Create a rate limit status request
-                status_request = {
-                    "cmd": "rate_limit_status",
-                    "user": username_to_check
-                }
-                
-                # Use the message handler directly
-                from handlers import message as message_handler
-                response = message_handler.handle(ws, status_request, server_data)
-                
-                if response and response.get("cmd") == "rate_limit_status":
-                    status = response.get("status", {})
-                    status_msg = (
-                        f"Rate limit status for {response.get('user', username_to_check)}:\n"
-                        f"Messages this minute: {status.get('messages_this_minute', 0)}/{status.get('messages_per_minute_limit', 30)}\n"
-                        f"Recent messages (10s): {status.get('recent_messages', 0)}/{status.get('burst_limit', 5)}\n"
-                    )
-                    if status.get('cooldown_remaining', 0) > 0:
-                        status_msg += f"Cooldown remaining: {status.get('cooldown_remaining', 0):.1f} seconds"
-                    else:
-                        status_msg += "No cooldown active"
-                    send_message_to_channel(channel, status_msg, server_data)
-                else:
-                    error_msg = response.get("val", "Failed to get rate limit status") if response else "Failed to get rate limit status"
-                    send_message_to_channel(channel, error_msg, server_data)
-            case "rate_limit_reset":
-                if len(parts) < 3:
-                    send_message_to_channel(channel, "Usage: !server rate_limit_reset <username>", server_data)
-                    return
-                username_to_reset = parts[2]
-                
-                # Create a rate limit reset request
-                reset_request = {
-                    "cmd": "rate_limit_reset",
-                    "user": username_to_reset
-                }
-                
-                # Use the message handler directly
-                from handlers import message as message_handler
-                response = message_handler.handle(ws, reset_request, server_data)
-                
-                if response and response.get("cmd") == "rate_limit_reset":
-                    send_message_to_channel(channel, response.get("val", f"Rate limit reset for {username_to_reset}"), server_data)
-                else:
-                    error_msg = response.get("val", "Failed to reset rate limit") if response else "Failed to reset rate limit"
-                    send_message_to_channel(channel, error_msg, server_data)
-            case "rate_limit_toggle":
-                # Toggle rate limiting on/off (admin only)
-                user_roles = users.get_user_roles(username)
-                if not user_roles or "owner" not in user_roles:
-                    send_message_to_channel(channel, "Access denied: owner role required", server_data)
-                    return
-                
-                # Get current config
-                config = server_data.get("config", {})
-                rate_config = config.get("rate_limiting", {})
-                current_enabled = rate_config.get("enabled", False)
-                
-                # Toggle the setting
-                new_enabled = not current_enabled
-                rate_config["enabled"] = new_enabled
-                
-                # Update the rate limiter in server_data
-                if new_enabled and not server_data.get("rate_limiter"):
-                    # Create new rate limiter if enabling
-                    from handlers.rate_limiter import RateLimiter
-                    server_data["rate_limiter"] = RateLimiter(
-                        messages_per_minute=rate_config.get("messages_per_minute", 30),
-                        burst_limit=rate_config.get("burst_limit", 5),
-                        cooldown_seconds=rate_config.get("cooldown_seconds", 60)
-                    )
-                elif not new_enabled:
-                    # Remove rate limiter if disabling
-                    server_data["rate_limiter"] = None
-                
-                # Save config to file
-                import json
-                import os
-                config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config.json")
-                with open(config_path, "w") as f:
-                    json.dump(config, f, indent=4)
-                
-                status_msg = f"Rate limiting {'enabled' if new_enabled else 'disabled'}"
-                send_message_to_channel(channel, status_msg, server_data)
-            case "help":
-                help_text = ""
-                match parts[2] if len(parts) > 2 else None:
-                    case "users":
-                        help_text += (
-                            "!server list_users - List all users\n"
-                            "!server get_user_info <username> - Get information about a user\n"
-                            "!server update_user_info <username> <info> - Update information about a user\n"
-                        )
-                    case "channels":
-                        help_text += (
-                            "!server list_channels - List all channels\n"
-                            "!server create_channel <channel_name> <channel_type> - Create a new channel\n"
-                            "!server delete_channel <channel_name> - Delete a channel\n"
-                            "!server add_channel_permission <channel_name> <role> [permission] - Add permissions to a role for a channel\n"
-                            "!server rem_channel_permission <channel_name> <role> [permission] - Remove permissions from a role for a channel\n"
-                            "!server get_channel_permissions <channel_name> - Get permissions for a channel\n"
-                            "!server reorder_channel <channel_name> <new_position> - Reorder a channel\n"
-                            "!server get_channel <channel_name> - Get information about a channel\n"
-                        )
-                    case "roles":
-                        help_text += (
-                            "!server create_role <role_name> - Create a new role\n"
-                            "!server delete_role <role_name> - Delete a role\n"
-                            "!server give_role <username> <role_name> - Give a role to a user\n"
-                            "!server remove_role <username> <role_name> - Remove a role from a user\n"
-                            "!server list_roles - List all roles\n"
-                            "!server update_role_color <role_name> <new_color> - Update the color of a role\n"
-                        )
-                    case "server":
-                        help_text += (
-                            "!server ban <username> - Ban a user from the server\n"
-                            "!server unban <username> - Unban a user from the server\n"
-                            "!server list_banned - List all banned users\n"
-                            "!server rate_limit_status [username] - Check rate limit status (self or specific user for admins)\n"
-                            "!server rate_limit_reset <username> - Reset rate limit for a user (admin only)\n"
-                            "!server rate_limit_toggle - Toggle rate limiting on/off (admin only)\n"
-                        )
-                    case "messages":
-                        help_text += (
-                            "!server message_purge number - Purge the last 'number' of messages from the current channel\n"
-                        )
-                    case None:
-                        help_text += (
-                            "!server help [users|channels|roles|server] - Show this help message or specific help for a section\n"
-                        )
-
-                send_message_to_channel(channel, help_text, server_data)
-            case _:
-                send_message_to_channel(channel, "Unknown command. Use !server help for a list of commands.", server_data)
+    content = message_data.get("content", "").strip()
+    if not content.startswith(COMMAND_PREFIX):
+        return
+    
+    parts = content[len(COMMAND_PREFIX):].split()
+    if not parts:
+        return
+    
+    command = parts[0].lower()
+    args = parts[1:]
+    
+    channel = message_data.get("channel", "general")
+    handler = CommandHandler(ws, channel, server_data)
+    
+    if command in COMMANDS:
+        try:
+            COMMANDS[command](handler, args)
+        except Exception as e:
+            Logger.error(f"Error executing command '{command}': {e}")
+            handler.error(f"Command failed: {str(e)}")
+    else:
+        handler.reply(f"Unknown command: {command}\nUse !help for a list of commands")

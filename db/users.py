@@ -151,3 +151,25 @@ def unban_user(user_id):
         save_user(user_id, user)
         return True
     return False
+
+def give_role(user_id, role):
+    """
+    Give a user a role.
+    """
+    user = get_user(user_id)
+    if user:
+        user["roles"].append(role)
+        save_user(user_id, user)
+        return True
+    return False
+
+def remove_role(user_id, role):
+    """
+    Remove a role from a user.
+    """
+    user = get_user(user_id)
+    if user:
+        user["roles"].remove(role)
+        save_user(user_id, user)
+        return True
+    return False
