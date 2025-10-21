@@ -80,6 +80,8 @@ def get_users():
 
         user_arr = []
         for user_id, user_data in users.items():
+            if "banned" in user_data.get("roles", []):
+                continue
             user_arr.append({
                 "username": user_id,
                 "roles": user_data.get("roles", []),
