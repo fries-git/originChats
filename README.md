@@ -66,28 +66,6 @@ originChats/
   - Response formatting
 - **Dependencies**: `db/`, `handlers/websocket_utils.py`
 
-## Key Improvements
-
-### 1. **Separation of Concerns**
-- Authentication logic isolated in `auth.py`
-- WebSocket utilities separated from business logic
-- Server lifecycle management in dedicated class
-
-### 2. **Modularity**
-- Each module has a single, clear responsibility
-- Dependencies are explicit and minimal
-- Easy to test individual components
-
-### 3. **Maintainability**
-- Clean import structure
-- Consistent error handling
-- Clear function signatures and documentation
-
-### 4. **Extensibility**
-- Server class can be easily extended
-- New handlers can be added without modifying core logic
-- Configuration-driven behavior
-
 ## Usage
 
 ### Starting the Server
@@ -143,7 +121,7 @@ Rate limiting is configured in `config.json`:
 ### Rate Limited Actions
 The following actions are subject to rate limiting:
 - **Message sending** (`message_new`)
-- **Message editing** (`message_edit`) 
+- **Message editing** (`message_edit`)
 - **Message deletion** (`message_delete`)
 
 ### Rate Limit Response
